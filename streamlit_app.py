@@ -487,9 +487,9 @@ if st.session_state.step == "Concept":
 <div style="background: rgba(255,255,255,0.2); border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
 <span style="font-size: 1.5rem;">💡</span>
 </div>
-<h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Configure Dataset</h2>
+<h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Generate Synthetic Data</h2>
 </div>
-<p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 600px; margin: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">Define the scope, constraints, and target context for your synthetic data generation pipeline.</p>
+<p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 100%; margin: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">Define the scope, constraints, and target context for your synthetic data generation pipeline.</p>
 </div>
 """, unsafe_allow_html=True)
     
@@ -607,13 +607,6 @@ elif st.session_state.step == "Taxonomy":
 </div>
 """, unsafe_allow_html=True)
     
-    if st.button("Next: Synthesize Data", type="primary"):
-        with st.spinner("Synthesizing Synthetic Data Data Points (Simulated)..."):
-            time.sleep(1)
-            st.session_state.highest_step = max(st.session_state.highest_step, 2)
-            st.session_state.step = "Data"
-            st.rerun()
-            
     
     # Tabs for Sankey and Structure
     tab_sankey, tab_structure = st.tabs(["Sankey Diagram", "Taxonomy Structure"])
@@ -670,6 +663,10 @@ elif st.session_state.step == "Taxonomy":
             tree_df['level3'] = tree_df['level3'].apply(safe_eval_list)
             tree_df = tree_df.explode('level3').drop_duplicates().sort_values(['level1', 'level2', 'level3'])
             
+            if ('selected_l3' not in st.session_state) or (st.session_state.get('selected_l3') not in tree_df['level3'].values):
+                if not tree_df.empty:
+                    st.session_state.selected_l3 = tree_df.iloc[0]['level3']
+
             # Container for the split view
             st.markdown('<div class="content-card">', unsafe_allow_html=True)
             col_tree, col_meta = st.columns([1, 1], gap="large")
@@ -678,10 +675,10 @@ elif st.session_state.step == "Taxonomy":
                 st.markdown("### L1, L2, L3 Tree")
                 l1_groups = tree_df.groupby('level1')
                 for l1, l1_df in l1_groups:
-                    with st.expander(f"📁 **L1** {l1}"):
+                    with st.expander(f"📁 **L1** {l1}", expanded=True):
                         l2_groups = l1_df.groupby('level2')
                         for l2, l2_df in l2_groups:
-                            with st.expander(f"📂 **L2** {l2}"):
+                            with st.expander(f"📂 **L2** {l2}", expanded=True):
                                 l3_items = sorted(l2_df['level3'].unique())
                                 for l3 in l3_items:
                                     # Use a button to set the selected L3 node
@@ -790,6 +787,14 @@ elif st.session_state.step == "Taxonomy":
                      else:
                          st.warning("Data not found for this node.")
             st.markdown('</div>', unsafe_allow_html=True)
+            
+    st.write("")
+    if st.button("Next: Generate Data", type="primary"):
+        with st.spinner("Synthesizing Synthetic Data Data Points (Simulated)..."):
+            time.sleep(1)
+            st.session_state.highest_step = max(st.session_state.highest_step, 2)
+            st.session_state.step = "Data"
+            st.rerun()
 
 elif st.session_state.step == "Data":
     df = st.session_state.demo_data
