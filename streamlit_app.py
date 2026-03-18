@@ -309,12 +309,13 @@ def get_expanded_paths(df, columns, context_countries=None):
 
 def render_sankey_svg(paths, col_nodes, columns_config):
     # columns_config is list of {id, label}
-    width = 1200
-    height = 800
-    padding_x = 60
+    import textwrap
+    width = 1800
+    height = 900
+    padding_x = 180
     padding_y = 80
-    node_width = 140
-    node_height = 24
+    node_width = 300
+    node_height = 44
     
     if not columns_config: return ""
     col_spacing = (width - 2 * padding_x) / (len(columns_config) - 1) if len(columns_config) > 1 else 0
@@ -362,21 +363,32 @@ def render_sankey_svg(paths, col_nodes, columns_config):
         label = col_conf['label']
         x = i * col_spacing + padding_x
         nodes = col_nodes.get(col_id, [])
-        print(label)
         # Header Box
         svg_content.append(f'<rect x="{x - node_width / 2}" y="10" width="{node_width}" height="30" rx="8" fill="#f1f5f9" stroke="#e2e8f0" />')
-        svg_content.append(f'<text x="{x}" y="30" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="10" font-weight="900" fill="#334155" style="text-transform: uppercase; letter-spacing: 0.1em;">{label}</text>')
+        svg_content.append(f'<text x="{x}" y="30" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="12" font-weight="900" fill="#334155" style="text-transform: uppercase; letter-spacing: 0.1em;">{label}</text>')
         
         # Nodes
         for n_idx, node_name in enumerate(nodes):
             y = padding_y + ((height - 2 * padding_y) / (len(nodes) + 1)) * (n_idx + 1)
             
-            # Truncate text
-            display_name = node_name[:20] + "..." if len(node_name) > 22 else node_name
+            # Truncate text but allow 2 lines
+            # Split to chunks of max ~34 chars. If >2 lines, take 2 lines and add '...'
+            wrapped = textwrap.wrap(str(node_name), width=34)
+            if not wrapped:
+                wrapped = [""]
+            lines = wrapped[:2]
+            if len(wrapped) > 2:
+                lines[1] = lines[1][:31] + "..."
             
             node_group = f'<g transform="translate({x - node_width / 2}, {y - node_height / 2})">'
-            node_group += f'<rect width="{node_width}" height="{node_height}" rx="4" fill="white" stroke="#e2e8f0" stroke-width="1" class="sankey-node" />'
-            node_group += f'<text x="{node_width / 2}" y="{node_height / 2 + 4}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="12" font-weight="700" fill="#475569" style="pointer-events: none;">{display_name}</text>'
+            node_group += f'<rect width="{node_width}" height="{node_height}" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" class="sankey-node" />'
+            
+            if len(lines) == 1:
+                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 + 5}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[0]}</text>'
+            else:
+                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 - 2}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[0]}</text>'
+                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 + 14}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[1]}</text>'
+            
             node_group += f'<title>{node_name}</title>'
             node_group += '</g>'
             svg_content.append(node_group)
@@ -681,8 +693,6 @@ elif st.session_state.step == "Taxonomy":
                             with st.expander(f"📂 **L2** {l2}", expanded=True):
                                 l3_items = sorted(l2_df['level3'].unique())
                                 for l3 in l3_items:
-                                    # Use a button to set the selected L3 node
-                                    # If button is clicked, state is updated and app reruns
                                     if st.button(f"👉 **L3** {l3}", key=f"btn_{l1}_{l2}_{l3}", use_container_width=True):
                                         st.session_state.selected_l3 = l3
             
