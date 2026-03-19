@@ -549,7 +549,9 @@ if st.session_state.step == "Concept":
 <span style="font-size: 1.1rem;">🌍</span>
 <label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Target Countries</label>
 </div>""", unsafe_allow_html=True)
-            st.multiselect("Target Countries", ["Global", "USA", "UK", "Canada", "Australia", "Ghana", "Nigeria"], default=["Global"], key="target_countries", label_visibility="collapsed")
+            if 'target_countries' not in st.session_state:
+                st.session_state.target_countries = ["Global"]
+            st.multiselect("Target Countries", ["Global", "USA", "UK", "Canada", "Australia", "Ghana", "Nigeria"], key="target_countries", label_visibility="collapsed")
 
             st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem;">
 <span style="font-size: 1.1rem;">📂</span>
