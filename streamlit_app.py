@@ -303,6 +303,9 @@ def get_expanded_paths(df, columns, context_countries=None):
     col_nodes = {}
     for col in active_hierarchy:
         unique_nodes = sorted(list(set(p.get(col, '') for p in paths)))
+        if 'Global' in unique_nodes:
+            unique_nodes.remove('Global')
+            unique_nodes.insert(0, 'Global')
         col_nodes[col] = unique_nodes
         
     return paths, col_nodes
@@ -635,10 +638,10 @@ elif st.session_state.step == "Taxonomy":
 </div>
 <h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Refine Taxonomy</h2>
 </div>
-<p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 600px; margin: 0 0 1rem 0;">Review the generated domain structure based on your configuration. Edit branches or proceed to synthesis.</p>
+<p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 600px; margin: 0 0 1rem 0;">Review the generated taxonomy and associated relationships. Edit branches of the taxonomy or proceed to grounded data generation.</p>
 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-<span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">📌 {concept_name}</span>
 <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">🌍 {regions}</span>
+<span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">📌 {concept_name}</span>
 </div>
 </div>
 """, unsafe_allow_html=True)
