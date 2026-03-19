@@ -325,6 +325,7 @@ def render_sankey_svg(paths, col_nodes, columns_config):
     # Defs for gradient
     svg_content.append('<defs><linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6366f1" stop-opacity="0.05" /><stop offset="100%" stop-color="#6366f1" stop-opacity="0.2" /></linearGradient></defs>')
     
+    css_rules = []
     # Links
     # Iterate through columns to draw links between them
     for i in range(len(columns_config) - 1):
@@ -355,7 +356,7 @@ def render_sankey_svg(paths, col_nodes, columns_config):
             
             # We use a unique key equivalent for React, but here just raw XML
             # Class names for hover effect (will need CSS injection)
-            svg_content.append(f'<path d="{d}" stroke="url(#flowGradient)" stroke-width="1" fill="none" class="sankey-link" />')
+            svg_content.append(f'<path d="{d}" stroke="url(#flowGradient)" stroke-width="1" fill="none" class="sankey-link path-row-{p_idx}" />')
 
     # Nodes & Headers
     for i, col_conf in enumerate(columns_config):
@@ -380,7 +381,9 @@ def render_sankey_svg(paths, col_nodes, columns_config):
             if len(wrapped) > 2:
                 lines[1] = lines[1][:31] + "..."
             
-            node_group = f'<g transform="translate({x - node_width / 2}, {y - node_height / 2})">'
+            node_class = f"node-{i}-{n_idx}"
+            
+            node_group = f'<g transform="translate({x - node_width / 2}, {y - node_height / 2})" class="sankey-node-grp {node_class}">'
             node_group += f'<rect width="{node_width}" height="{node_height}" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" class="sankey-node" />'
             
             if len(lines) == 1:
@@ -392,6 +395,25 @@ def render_sankey_svg(paths, col_nodes, columns_config):
             node_group += f'<title>{node_name}</title>'
             node_group += '</g>'
             svg_content.append(node_group)
+            
+            # Path highlighting logic for this node
+            associated_paths = [str(p_idx) for p_idx, p in enumerate(paths) if p.get(col_id) == node_name]
+            if associated_paths:
+                selectors = ", ".join([f"svg:has(.{node_class}:hover) .path-row-{p}" for p in associated_paths])
+                css_rules.append(selectors + " { stroke-opacity: 0.8 !important; stroke: #818cf8 !important; stroke-width: 2px !important; }")
+
+    # Master CSS for SVG hover effects
+    hover_css = f"""
+    <style>
+    /* If ANY node group is hovered, dim all links */
+    svg:has(.sankey-node-grp:hover) .sankey-link {{
+        stroke-opacity: 0.05 !important;
+    }}
+    /* Highlight associated paths */
+    {" ".join(css_rules)}
+    </style>
+    """
+    svg_content.insert(0, hover_css)
 
     return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; min-width: 1000px; max-height: 100%; display: block; background-color: white;">{"".join(svg_content)}</svg>'
 
