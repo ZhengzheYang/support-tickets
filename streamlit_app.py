@@ -801,6 +801,14 @@ elif st.session_state.step == "Taxonomy":
 
                          # Research Citations
                          st.markdown("📖 **RESEARCH CITATIONS**")
+                         
+                         title = "Research Paper"
+                         import re
+                         paper = str(node_data.get('paper_content', ''))
+                         title_match = re.search(r'\*\*Title:\*\*\s*(?:\"(.*?)\"|(.*?)\n)', paper)
+                         if title_match:
+                             title = (title_match.group(1) or title_match.group(2) or "Research Paper").strip()
+                             
                          url_val = node_data.get('url', '')
                          if isinstance(url_val, str) and url_val.startswith('['):
                              try: url_val = eval(url_val)
@@ -808,9 +816,10 @@ elif st.session_state.step == "Taxonomy":
                              
                          if isinstance(url_val, list):
                              for idx, u in enumerate(url_val):
-                                 st.markdown(f"- [{u[:60]}...]({u})")
+                                 display_title = title if len(url_val) == 1 else f"{title} [{idx+1}]"
+                                 st.markdown(f"- [{display_title}]({u})")
                          elif isinstance(url_val, str) and url_val:
-                             st.markdown(f"- [{url_val[:60]}...]({url_val})")
+                             st.markdown(f"- [{title}]({url_val})")
                          else:
                               # fallback paper content
                               paper = node_data.get('paper_content', '')
