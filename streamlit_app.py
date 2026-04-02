@@ -599,6 +599,9 @@ if st.session_state.step == "Concept":
             
         st.write("")
         if st.button("Generate Taxonomy", type="primary"):
+            # Save concept and countries to avoid loss on widget unmount
+            st.session_state.saved_concept = st.session_state.target_concept
+            st.session_state.saved_countries = st.session_state.target_countries
             with st.spinner("Generating Taxonomy (Simulated)..."):
                 time.sleep(1)
                 
@@ -624,8 +627,8 @@ if st.session_state.step == "Concept":
 
 elif st.session_state.step == "Taxonomy":
     # Hero banner
-    concept_name = st.session_state.get('target_concept', 'Medical Advice')
-    regions = ', '.join(st.session_state.get('target_countries', ['Global']))
+    concept_name = st.session_state.get('saved_concept', 'Medical Advice')
+    regions = ', '.join(st.session_state.get('saved_countries', ['Global']))
     st.markdown(f"""
 <div class="content-card" style="
     background: linear-gradient(135deg, #0ea5e9 0%, #0d9488 100%);
@@ -843,6 +846,28 @@ elif st.session_state.step == "Taxonomy":
             st.rerun()
 
 elif st.session_state.step == "Data":
+    concept_name = st.session_state.get('saved_concept', 'Medical Advice')
+    regions = ', '.join(st.session_state.get('saved_countries', ['Global']))
+    st.markdown(f"""
+<div class="content-card" style="
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    border: none; padding: 3rem 2.5rem; margin-bottom: 2rem;
+    box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3);
+">
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+<div style="background: rgba(255,255,255,0.2); border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+<span style="font-size: 1.5rem;">🗄️</span>
+</div>
+<h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Review Synthetic Data</h2>
+</div>
+<p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 600px; margin: 0 0 1rem 0;">Assess the quality and diversity of the grounded synthetic data you created.</p>
+<div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+<span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">🌍 {regions}</span>
+<span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">📌 {concept_name}</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
     df = st.session_state.demo_data
     if not df.empty:
         # --- Prepare working dataframe ---
@@ -1028,7 +1053,7 @@ elif st.session_state.step == "Data":
 <h4 style="margin: 0; font-size: 12px; font-weight: 900; color: #334155; text-transform: uppercase; letter-spacing: 0.1em;">Ground Truth Inspector</h4>
 </div>
 """, unsafe_allow_html=True)
-        gt_df = df_work[['level2', 'level3', 'prompts', 'complexity', 'extracted_Country', 'Domain']].head(50)
+        gt_df = df_work[['level2', 'level3', 'prompts', 'complexity', 'extracted_Country', 'Domain']].copy()
 
         # Classify tone for each prompt
         def classify_tone(prompt):
@@ -1054,47 +1079,61 @@ elif st.session_state.step == "Data":
             'Aggressive': ('#fef2f2', '#dc2626'), 'Neutral': ('#f8fafc', '#64748b')
         }
 
-        # Build per-cell fill colors for tone column
-        tone_fill_colors = [tone_colors.get(t, ('#f8fafc','#64748b'))[0] for t in gt_df['tone']]
-        tone_font_colors = [tone_colors.get(t, ('#f8fafc','#64748b'))[1] for t in gt_df['tone']]
+        # Rename columns for spreadsheet appearance
+        display_df = gt_df[['level2', 'level3', 'prompts', 'complexity', 'tone', 'extracted_Country', 'Domain']].rename(columns={
+            'level2': 'L2 Subtopic',
+            'level3': 'L3 Leaf',
+            'prompts': 'Synthetic Prompt',
+            'complexity': 'Complexity Score',
+            'tone': 'Tone',
+            'extracted_Country': 'Country',
+            'Domain': 'Domain'
+        })
 
-        # Build column fill colors: each column needs a list of colors per row
-        n_rows = len(gt_df)
-        white_fill = ['white'] * n_rows
+        # --- Table Filters ---
+        st.markdown('<div style="margin-top: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #6366f1; font-size: 14px;">🔍</span><span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Table Filters</span></div>', unsafe_allow_html=True)
+        
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            l2_options = sorted(display_df['L2 Subtopic'].dropna().unique().tolist())
+            selected_l2 = st.multiselect("L2 Subtopic", options=l2_options, placeholder="All Subtopics")
+        with col_f2:
+            l3_options = sorted(display_df['L3 Leaf'].dropna().unique().tolist())
+            selected_l3 = st.multiselect("L3 Leaf", options=l3_options, placeholder="All L3 Leafs")
+        with col_f3:
+            tone_options = sorted(display_df['Tone'].dropna().unique().tolist())
+            selected_tone = st.multiselect("Tone", options=tone_options, placeholder="All Tones")
 
-        fig_table = go.Figure(data=[go.Table(
-            columnwidth=[150, 300, 80, 80, 150],
-            header=dict(
-                values=['<b>Node Path</b>', '<b>Synthetic Prompt</b>', '<b>Complexity</b>', '<b>Tone</b>', '<b>Context</b>'],
-                fill_color='#f8fafc', font=dict(size=10, color='#94a3b8', family="'Inter', sans-serif"),
-                align='left', height=40, line_color='#f1f5f9'
-            ),
-            cells=dict(
-                values=[
-                    [f"<b>{l2}</b><br>{l3}" for l2, l3 in zip(gt_df['level2'], gt_df['level3'])],
-                    [f"<i>\"{str(p)[:100]}...\"</i>" if len(str(p)) > 100 else f"<i>\"{p}\"</i>" for p in gt_df['prompts']],
-                    [f"<b>{c}/10</b>" for c in gt_df['complexity']],
-                    [f"<b>{t}</b>" for t in gt_df['tone']],
-                    [f"<b>{co}</b> · {d}" for co, d in zip(gt_df['extracted_Country'], gt_df['Domain'])]
-                ],
-                fill_color=[white_fill, white_fill, white_fill, tone_fill_colors, white_fill],
-                font=dict(size=11, family="'Inter', sans-serif", color=[
-                    ['#334155'] * n_rows,
-                    ['#475569'] * n_rows,
-                    ['#475569'] * n_rows,
-                    tone_font_colors,
-                    ['#4f46e5'] * n_rows
-                ]),
-                align='left', height=50,
-                line_color='#f1f5f9'
+        # Apply filters
+        if selected_l2:
+            display_df = display_df[display_df['L2 Subtopic'].isin(selected_l2)]
+        if selected_l3:
+            display_df = display_df[display_df['L3 Leaf'].isin(selected_l3)]
+        if selected_tone:
+            display_df = display_df[display_df['Tone'].isin(selected_tone)]
+
+        # Action row for download button
+        col_btn, _ = st.columns([1, 2])
+        with col_btn:
+            csv_data = display_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Ground Truth Data (CSV)",
+                data=csv_data,
+                file_name='ground_truth_inspector.csv',
+                mime='text/csv',
+                use_container_width=True
             )
-        )])
-        fig_table.update_layout(
-            height=max(400, min(len(gt_df) * 55, 800)),
-            margin=dict(l=0, r=0, t=0, b=0),
-            paper_bgcolor='white'
+
+        # Interactive Data Table
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            height=600,
+            column_config={
+                "Synthetic Prompt": st.column_config.TextColumn("Synthetic Prompt", width="large"),
+                "Complexity Score": st.column_config.NumberColumn("Complexity Score", format="%.1f/10"),
+            }
         )
-        st.plotly_chart(fig_table, use_container_width=True)
 
     else:
         st.warning("No data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
