@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 import ast
 from collections import Counter
 import time
+import json
 
 # Page config
 st.set_page_config(page_title="NodeSynth Taxonomy Demo", page_icon="🔗", layout="wide")
@@ -249,230 +250,151 @@ def load_data(path: str) -> pd.DataFrame:
          df['prompts'] = "Generated synthetic dialog or context for " + df['level3'].astype(str)
     return df
 
-def get_expanded_paths(df, columns, context_countries=None):
-    if df.empty: return [], {}
-    
-    # Explicit Hierarchy
-    hierarchy = ['level1', 'level2', 'level3', 'user_case', 'user_group', 'cleaned_Country']
-    
-    # Filter hierarchy based on visible columns (keep order)
-    active_hierarchy = [col for col in hierarchy if col in columns]
-    
-    if len(active_hierarchy) < 2:
-        return [], {}
-
-    paths = []
-    
-    # Iterate over every row to build paths
-    for _, row in df.iterrows():
-        # Base path elements
-        elements = {}
-        for col in active_hierarchy:
-             if col in row:
-                 elements[col] = str(row[col])
-        
-        # Handle Global Expansion for Country
-        final_countries = []
-        if 'cleaned_Country' in active_hierarchy:
-            val = str(row.get('cleaned_Country', ''))
-            if val.lower() == 'global' and context_countries:
-                # Expand to all context countries EXCEPT Global
-                expanded = [c for c in context_countries if c.lower() != 'global']
-                if not expanded:
-                     final_countries = ['Global']
-                else:
-                     final_countries = expanded
-            else:
-                final_countries = [val]
-        else:
-             final_countries = ['N/A'] 
-             
-        # Generate paths
-        if 'cleaned_Country' not in active_hierarchy:
-             # Just one path
-             paths.append(elements)
-        else:
-             # Replicate for each country
-             base_elements = {k: v for k, v in elements.items() if k != 'cleaned_Country'}
-             for c in final_countries:
-                 new_elements = base_elements.copy()
-                 new_elements['cleaned_Country'] = c
-                 paths.append(new_elements)
-
-    # Calculate unique nodes for each column (sorted)
-    col_nodes = {}
-    for col in active_hierarchy:
-        unique_nodes = sorted(list(set(p.get(col, '') for p in paths)))
-        if 'Global' in unique_nodes:
-            unique_nodes.remove('Global')
-            unique_nodes.insert(0, 'Global')
-        col_nodes[col] = unique_nodes
-        
-    return paths, col_nodes
-
-def render_sankey_svg(paths, col_nodes, columns_config):
-    # columns_config is list of {id, label}
-    import textwrap
-    width = 1800
-    height = 900
-    padding_x = 180
-    padding_y = 80
-    node_width = 300
-    node_height = 44
-    
-    if not columns_config: return ""
-    col_spacing = (width - 2 * padding_x) / (len(columns_config) - 1) if len(columns_config) > 1 else 0
-    
-    svg_content = []
-    
-    # Defs for gradient
-    svg_content.append('<defs><linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6366f1" stop-opacity="0.05" /><stop offset="100%" stop-color="#6366f1" stop-opacity="0.2" /></linearGradient></defs>')
-    
-    css_rules = []
-    # Links
-    # Iterate through columns to draw links between them
-    for i in range(len(columns_config) - 1):
-        col = columns_config[i]['id']
-        next_col = columns_config[i+1]['id']
-        
-        x1 = i * col_spacing + padding_x
-        x2 = (i + 1) * col_spacing + padding_x
-        
-        nodes1 = col_nodes.get(col, [])
-        nodes2 = col_nodes.get(next_col, [])
-        
-        # Draw a link for each path
-        for p_idx, path in enumerate(paths):
-            val1 = path.get(col)
-            val2 = path.get(next_col)
-            
-            if val1 not in nodes1 or val2 not in nodes2: continue
-            
-            idx1 = nodes1.index(val1)
-            idx2 = nodes2.index(val2)
-            
-            y1 = padding_y + ((height - 2 * padding_y) / (len(nodes1) + 1)) * (idx1 + 1)
-            y2 = padding_y + ((height - 2 * padding_y) / (len(nodes2) + 1)) * (idx2 + 1)
-            
-            # Cubic Bezier
-            d = f"M {x1 + node_width / 2} {y1} C {x1 + node_width} {y1}, {x2 - node_width / 2} {y2}, {x2 - node_width / 2} {y2}"
-            
-            # We use a unique key equivalent for React, but here just raw XML
-            # Class names for hover effect (will need CSS injection)
-            svg_content.append(f'<path d="{d}" stroke="url(#flowGradient)" stroke-width="1" fill="none" class="sankey-link path-row-{p_idx}" />')
-
-    # Nodes & Headers
-    for i, col_conf in enumerate(columns_config):
-        col_id = col_conf['id']
-        label = col_conf['label']
-        x = i * col_spacing + padding_x
-        nodes = col_nodes.get(col_id, [])
-        # Header Box
-        svg_content.append(f'<rect x="{x - node_width / 2}" y="10" width="{node_width}" height="30" rx="8" fill="#f1f5f9" stroke="#e2e8f0" />')
-        svg_content.append(f'<text x="{x}" y="30" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="12" font-weight="900" fill="#334155" style="text-transform: uppercase; letter-spacing: 0.1em;">{label}</text>')
-        
-        # Nodes
-        for n_idx, node_name in enumerate(nodes):
-            y = padding_y + ((height - 2 * padding_y) / (len(nodes) + 1)) * (n_idx + 1)
-            
-            # Truncate text but allow 2 lines
-            # Split to chunks of max ~34 chars. If >2 lines, take 2 lines and add '...'
-            wrapped = textwrap.wrap(str(node_name), width=34)
-            if not wrapped:
-                wrapped = [""]
-            lines = wrapped[:2]
-            if len(wrapped) > 2:
-                lines[1] = lines[1][:31] + "..."
-            
-            node_class = f"node-{i}-{n_idx}"
-            
-            node_group = f'<g transform="translate({x - node_width / 2}, {y - node_height / 2})" class="sankey-node-grp {node_class}">'
-            node_group += f'<rect width="{node_width}" height="{node_height}" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" class="sankey-node" />'
-            
-            if len(lines) == 1:
-                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 + 5}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[0]}</text>'
-            else:
-                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 - 2}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[0]}</text>'
-                node_group += f'<text x="{node_width / 2}" y="{node_height / 2 + 14}" text-anchor="middle" font-family="\'Inter\', sans-serif" font-size="14" font-weight="700" fill="#475569" style="pointer-events: none;">{lines[1]}</text>'
-            
-            node_group += f'<title>{node_name}</title>'
-            node_group += '</g>'
-            svg_content.append(node_group)
-            
-            # Path highlighting logic for this node
-            associated_paths = [str(p_idx) for p_idx, p in enumerate(paths) if p.get(col_id) == node_name]
-            if associated_paths:
-                selectors = ", ".join([f"svg:has(.{node_class}:hover) .path-row-{p}" for p in associated_paths])
-                css_rules.append(selectors + " { stroke-opacity: 0.8 !important; stroke: #818cf8 !important; stroke-width: 2px !important; }")
-
-    # Master CSS for SVG hover effects
-    hover_css = f"""
-    <style>
-    /* If ANY node group is hovered, dim all links */
-    svg:has(.sankey-node-grp:hover) .sankey-link {{
-        stroke-opacity: 0.05 !important;
-    }}
-    /* Highlight associated paths */
-    {" ".join(css_rules)}
-    </style>
-    """
-    svg_content.insert(0, hover_css)
-
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; min-width: 1000px; max-height: 100%; display: block; background-color: white;">{"".join(svg_content)}</svg>'
-
-def create_visualization(df_final, visible_dims=None, context_countries=None):
+def create_sankey_visualization(df_final):
     if df_final.empty:
-        return ""
-        
-    df_final2 = df_final[['Domain', 'level1',  'level2', 'level3', 'extracted_Country', 'user_group', 'user_case', 'model_modality','prompts']].drop_duplicates()
-    df_final2['user_group'] = df_final2['user_group'].astype(str).str.replace(';','').str.replace('Teachers','Teacher').str.replace('Parents','Parent').str.replace('Students','Student').str.replace('Researchers','Researcher')
-    df_final2.rename(columns={'extracted_Country': 'cleaned_Country'}, inplace=True)
-    
-    # Handle lists in cols if needed
-    for col in ['level3', 'cleaned_Country', 'user_group']:
-        if col in df_final2.columns:
-            df_final2[col] = df_final2[col].apply(lambda x: eval(x) if isinstance(x, str) and x.startswith('[') else x)
-            
-    # Normalize context_countries
-    if context_countries is None:
-        context_countries = ['Global']
-        
-    df_exploded = df_final2.explode('level3').explode('cleaned_Country').explode('user_group').reset_index(drop=True)
-    df_exploded['cleaned_Country'] = df_exploded['cleaned_Country'].astype(str)
-    df_exploded['level1'] = df_exploded['level1'].astype(str)
-    
-    # Use default dimensions if none provided
-    if not visible_dims:
-        visible_dims = ['level1', 'level2', 'level3', 'user_case', 'user_group']
+        return go.Figure()
 
-    # Generate paths and nodes
-    paths, col_nodes = get_expanded_paths(df_exploded, visible_dims, context_countries)
+    df_temp = df_final.copy()
     
-    # Map visible dimensions to labels
-    label_map = {
-        'level1': 'L1 Topic',
-        'level2': 'L2 Subtopic',
-        'level3': 'L3 Leaf',
-        'user_case': 'Use Case',
-        'user_group': 'User Group',
-        'cleaned_Country': 'Country'
+    def safe_eval_list(x):
+        if isinstance(x, str) and x.strip().startswith('['):
+            try: return eval(x)
+            except: return [x]
+        return x if isinstance(x, list) else [x]
+
+    for col in ['level3', 'extracted_Country', 'user_group']:
+        if col in df_temp.columns:
+            df_temp[col] = df_temp[col].apply(safe_eval_list)
+
+    df_exploded = df_temp.explode('level3').explode('extracted_Country').explode('user_group').reset_index(drop=True)
+    df_exploded.rename(columns={'extracted_Country': 'cleaned_Country'}, inplace=True)
+    
+    for col in ['cleaned_Country', 'level1', 'level2', 'level3', 'user_group', 'Domain']:
+        if col in df_exploded.columns:
+             df_exploded[col] = df_exploded[col].astype(str)
+
+    def generate_flow(df):
+        if df.empty:
+            return pd.DataFrame(columns=['source', 'target', 'count_1'])
+        
+        required_cols = ['Domain', 'level1', 'level2', 'level3', 'user_group', 'cleaned_Country']
+        existing_cols = [col for col in required_cols if col in df.columns]
+        
+        pairs = []
+        for i in range(len(existing_cols) - 1):
+             pairs.append((existing_cols[i], existing_cols[i+1]))
+             
+        flow_dfs = []
+        for src, tgt in pairs:
+             sub = df[[src, tgt]].copy()
+             sub.columns = ['source', 'target']
+             flow_dfs.append(sub)
+             
+        if not flow_dfs:
+             return pd.DataFrame(columns=['source', 'target', 'count_1'])
+             
+        flow_df = pd.concat(flow_dfs).dropna()
+        for col in ['source', 'target']:
+            flow_df[col] = flow_df[col].astype(str).str.replace("-", "").str.strip()
+            flow_df[col] = flow_df[col].replace({'UK': 'United Kingdom', 'USA': 'United States', 'US': 'United States', 'America': 'United States'})
+        
+        flow_df = flow_df[flow_df['source'] != flow_df['target']]
+        if flow_df.empty:
+             return pd.DataFrame(columns=['source', 'target', 'count_1'])
+             
+        flow_df = flow_df.groupby(['source', 'target'], as_index=False).size().rename(columns={'size': 'count_1'})
+        flow_df = flow_df[(flow_df['target']!= '') & (flow_df['source']!= '')]
+        return flow_df
+
+    def create_sankey_trace(filtered_df, visible=False):
+        sankey_df = generate_flow(filtered_df)
+        s_node_dict = dict(label=[])
+        s_link_dict = dict(source=[], target=[], value=[])
+        
+        if not sankey_df.empty:
+            all_nodes = sorted(list(pd.unique(sankey_df[['source', 'target']].values.ravel('K'))))
+            s_node_dict = dict(
+                pad=25, thickness=20, 
+                line=dict(color="black", width=0.5), 
+                label=all_nodes, 
+                color="blue"
+            )
+            s_link_dict = dict(
+                source=[all_nodes.index(s) for s in sankey_df.source],
+                target=[all_nodes.index(t) for t in sankey_df.target],
+                value=sankey_df.count_1
+            )
+        
+        return go.Sankey(node=s_node_dict, link=s_link_dict, visible=visible)
+
+    updatemenus = []
+    main_filter_columns = {
+        'user_group': {'x': 0.05, 'label_prefix': 'User Group'},
+        'level1': {'x': 0.20, 'label_prefix': 'Level 1'},
+        'user_case': {'x': 0.35, 'label_prefix': 'User Case'},
+        'model_modality': {'x': 0.50, 'label_prefix': 'Model Modality'},
+        'cleaned_Country': {'x': 0.65, 'label_prefix': 'Country'}
     }
-    
-    # Override based on user request mapping
-    columns_config = []
-    for col in visible_dims:
-        lbl = label_map.get(col, col)
-        if col == 'level1': lbl = 'L1 Topic'
-        elif col == 'level2': lbl = 'L2 Subtopic'
-        elif col == 'level3': lbl = 'L3 Leaf'
-        elif col == 'user_case': lbl = 'Use Case'
-        elif col == 'user_group': lbl = 'User Group'
-        elif col == 'cleaned_Country': lbl = 'Country'
-        columns_config.append({'id': col, 'label': lbl})
 
-    svg_html = render_sankey_svg(paths, col_nodes, columns_config)
+    main_filter_columns = {k: v for k, v in main_filter_columns.items() if k in df_exploded.columns}
+
+    total_button_states = 0
+    for col in main_filter_columns.keys():
+        total_button_states += (len(df_exploded[col].unique()) + 1)
     
-    return svg_html
+    total_traces = total_button_states
+    
+    fig = go.Figure()
+    current_trace_index = 0
+
+    for col, settings in main_filter_columns.items():
+        buttons = []
+        
+        s_trace = create_sankey_trace(df_exploded)
+        fig.add_trace(s_trace)
+        
+        visibility_mask_all = [False] * total_traces
+        visibility_mask_all[current_trace_index] = True
+        buttons.append(dict(
+            method='restyle', 
+            label=f'All {settings["label_prefix"]}s', 
+            args=[{'visible': visibility_mask_all}]
+        ))
+        current_trace_index += 1
+        
+        for value in sorted(df_exploded[col].unique()):
+            filtered_df = df_exploded[df_exploded[col] == value]
+            s_trace = create_sankey_trace(filtered_df)
+            fig.add_trace(s_trace)
+            
+            visibility_mask_val = [False] * total_traces
+            visibility_mask_val[current_trace_index] = True
+            buttons.append(dict(
+                method='restyle', 
+                label=str(value), 
+                args=[{'visible': visibility_mask_val}]
+            ))
+            current_trace_index += 1
+
+        updatemenus.append(dict(
+             buttons=buttons, direction='down', showactive=True,
+             x=settings['x'], y=1.18, xanchor='left', yanchor='top'
+        ))
+
+    if fig.data:
+         fig.data[0].visible = True
+
+    fig.update_layout(
+        title_text="Taxonomy Flow Visualizer",
+        title_x=0.5,
+        updatemenus=updatemenus,
+        margin=dict(l=10, r=10, t=120, b=20),
+        height=800,
+        font=dict(size=14, family="'Inter', Helvetica, Arial, sans-serif", color="#000000"),
+        showlegend=False
+    )
+    
+    return fig
 
 
 # Application State
@@ -650,42 +572,73 @@ elif st.session_state.step == "Taxonomy":
 """, unsafe_allow_html=True)
     
     
-    # Tabs for Sankey and Structure
-    tab_sankey, tab_structure = st.tabs(["Sankey Diagram", "Taxonomy Structure"])
+    tab_graph, tab_structure = st.tabs(["Knowledge Graph", "Taxonomy Structure"])
     
-    with tab_sankey:
-        # st.markdown('<div class="content-card">', unsafe_allow_html=True)        
+    with tab_graph:
         with st.spinner("Rendering Knowledge Graph..."):
             if not st.session_state.demo_data.empty:
+                df = st.session_state.demo_data.copy()
                 
-                # --- Configurable Dimensions ---
-                available_dims = ['level1', 'level2', 'level3', 'user_group', 'cleaned_Country', 'user_case', 'model_modality']
-                # Default matches the requested hierarchy: Domain -> L1 -> L2 -> L3 -> Use Cases -> User Groups
-                default_dims = ['level1', 'level2', 'level3', 'user_case', 'user_group']
+                def safe_eval(x):
+                    if isinstance(x, str) and x.strip().startswith('['):
+                        try: return eval(x)
+                        except: return [x]
+                    return [x] if isinstance(x, str) else x
+
+                for col in ['extracted_Country', 'user_group']:
+                    if col in df.columns:
+                        df[col] = df[col].apply(safe_eval)
+
+                fig = create_sankey_visualization(df)
                 
-                selected_dims = st.multiselect(
-                    "Visible Dimensions (Ordered)", 
-                    options=available_dims, 
-                    default=default_dims,
-                    help="Select and reorder dimensions to visualize in the Sankey diagram."
+                col_scale, _ = st.columns([1, 4])
+                with col_scale:
+                    scale_factor = st.slider("Visual Zoom Scale", min_value=1.0, max_value=3.0, value=1.0, step=0.1)
+                
+                base_width = 1200
+                base_height = 800
+                fig.update_layout(
+                    width=int(base_width * scale_factor),
+                    height=int(base_height * scale_factor)
                 )
-                # Generate SVG content
-                svg_html = create_visualization(st.session_state.demo_data, selected_dims, context_countries=st.session_state.get('target_countries', ['Global']))
-                
-                # CSS for hover effects
+
                 st.markdown("""
                 <style>
-                .sankey-link { transition: stroke-opacity 0.3s, stroke 0.3s; stroke-opacity: 0.15; cursor: pointer; }
-                .sankey-link:hover { stroke-opacity: 0.8 !important; stroke: #818cf8 !important; }
-                .sankey-node { transition: stroke 0.3s; cursor: pointer; }
-                .sankey-node:hover { stroke: #6366f1 !important; stroke-width: 2px !important; }
+                .stPlotlyChart svg text {
+                    text-rendering: geometricPrecision !important;
+                    -webkit-font-smoothing: antialiased;
+                }
+                /* Hide Plotly duplicated text mask halo outlines causing blurriness */
+                .stPlotlyChart svg text.textmask,
+                .stPlotlyChart svg text.label-text-mask,
+                .stPlotlyChart svg .sankey-node text.label-text-mask {
+                    display: none !important;
+                    stroke-width: 0 !important;
+                }
+                /* Kill strokes and enforce solid black on actual node labels */
+                .stPlotlyChart svg .node-label,
+                .stPlotlyChart svg .node-label tspan {
+                    stroke: none !important;
+                    text-shadow: none !important;
+                    fill: #000000 !important;
+                    -webkit-font-smoothing: antialiased;
+                }
+                .sankey-border-box {
+                    border: 1.5px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 15px;
+                    background-color: #ffffff;
+                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+                    overflow: auto; /* Enables panning via scrollbars */
+                }
                 </style>
                 """, unsafe_allow_html=True)
-                
-                st.markdown(svg_html, unsafe_allow_html=True)
+
+                st.markdown('<div class="sankey-border-box">', unsafe_allow_html=True)
+                st.plotly_chart(fig, use_container_width=False)
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
                 st.error("No demographic data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
-        # st.markdown('</div>', unsafe_allow_html=True)
 
     with tab_structure:
         if not st.session_state.demo_data.empty:
