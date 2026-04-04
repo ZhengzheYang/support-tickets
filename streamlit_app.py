@@ -8,6 +8,7 @@ import ast
 from collections import Counter
 import time
 import json
+import textwrap
 
 # Page config
 st.set_page_config(page_title="NodeSynth Taxonomy Demo", page_icon="🔗", layout="wide")
@@ -313,10 +314,11 @@ def create_sankey_visualization(df_final):
         
         if not sankey_df.empty:
             all_nodes = sorted(list(pd.unique(sankey_df[['source', 'target']].values.ravel('K'))))
+            wrapped_labels = [textwrap.fill(label, width=20).replace('\n', '<br>') for label in all_nodes]
             s_node_dict = dict(
                 pad=25, thickness=20, 
                 line=dict(color="black", width=0.5), 
-                label=all_nodes, 
+                label=wrapped_labels, 
                 color="blue"
             )
             s_link_dict = dict(
@@ -329,11 +331,11 @@ def create_sankey_visualization(df_final):
 
     updatemenus = []
     main_filter_columns = {
-        'user_group': {'x': 0.05, 'label_prefix': 'User Group'},
-        'level1': {'x': 0.20, 'label_prefix': 'Level 1'},
-        'user_case': {'x': 0.35, 'label_prefix': 'User Case'},
-        'model_modality': {'x': 0.50, 'label_prefix': 'Model Modality'},
-        'cleaned_Country': {'x': 0.65, 'label_prefix': 'Country'}
+        'user_group': {'x': 0.05, 'label_plural': 'User Groups'},
+        'level1': {'x': 0.20, 'label_plural': 'Level 1s'},
+        'user_case': {'x': 0.35, 'label_plural': 'User Cases'},
+        'model_modality': {'x': 0.50, 'label_plural': 'Model Modalities'},
+        'cleaned_Country': {'x': 0.65, 'label_plural': 'Countries'}
     }
 
     main_filter_columns = {k: v for k, v in main_filter_columns.items() if k in df_exploded.columns}
@@ -357,7 +359,7 @@ def create_sankey_visualization(df_final):
         visibility_mask_all[current_trace_index] = True
         buttons.append(dict(
             method='restyle', 
-            label=f'All {settings["label_prefix"]}s', 
+            label=f'All {settings["label_plural"]}', 
             args=[{'visible': visibility_mask_all}]
         ))
         current_trace_index += 1
