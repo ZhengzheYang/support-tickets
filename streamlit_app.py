@@ -593,9 +593,7 @@ elif st.session_state.step == "Taxonomy":
 
                 fig = create_sankey_visualization(df)
                 
-                col_scale, _ = st.columns([1, 4])
-                with col_scale:
-                    scale_factor = st.slider("Visual Zoom Scale", min_value=1.0, max_value=3.0, value=1.0, step=0.1)
+                scale_factor = st.session_state.get('sankey_zoom', 1.0)
                 
                 base_width = 1200
                 base_height = 800
@@ -639,6 +637,10 @@ elif st.session_state.step == "Taxonomy":
                 st.markdown('<div class="sankey-border-box">', unsafe_allow_html=True)
                 st.plotly_chart(fig, use_container_width=False)
                 st.markdown('</div>', unsafe_allow_html=True)
+
+                col_scale, _ = st.columns([1, 4])
+                with col_scale:
+                    st.slider("Visual Zoom Scale", min_value=1.0, max_value=3.0, value=scale_factor, step=0.1, key="sankey_zoom")
             else:
                 st.error("No demographic data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
 
