@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -9,12 +10,14 @@ from collections import Counter
 import time
 import json
 import textwrap
+from d3_sankey import create_d3_sankey_html
 
 # Page config
 st.set_page_config(page_title="NodeSynth Taxonomy Demo", page_icon="🔗", layout="wide")
 
 
 # Custom CSS to mimic nodesynth-og UI
+st.markdown('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">', unsafe_allow_html=True)
 st.markdown("""
 <style>
     /* Base styles */
@@ -223,6 +226,34 @@ st.markdown("""
     .stTabs [data-baseweb="tab-border"] {
         display: none;
     }
+    /* Plotly Sankey label fixes */
+    .stPlotlyChart svg text {
+        text-rendering: geometricPrecision !important;
+        font-family: 'Inter', sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+    }
+    .stPlotlyChart svg text.textmask,
+    .stPlotlyChart svg text.label-text-mask,
+    .stPlotlyChart svg .sankey-node text.label-text-mask {
+        display: none !important;
+        stroke-width: 0 !important;
+    }
+    .stPlotlyChart svg .node-label,
+    .stPlotlyChart svg .node-label tspan {
+        font-family: 'Inter', sans-serif !important;
+        stroke: none !important;
+        text-shadow: none !important;
+        fill: #334155 !important;
+        -webkit-font-smoothing: antialiased;
+    }
+    .sankey-border-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 10px 15px -3px rgb(0 0 0 / 0.04);
+        overflow: auto;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -307,6 +338,33 @@ def create_sankey_visualization(df_final):
         flow_df = flow_df[(flow_df['target']!= '') & (flow_df['source']!= '')]
         return flow_df
 
+    # Color palette for each taxonomy level — rich, distinct hues
+    _LEVEL_COLORS = {
+        'Domain':          {'solid': '#4f46e5', 'light': 'rgba(79,70,229,0.30)'},    # Deep Indigo
+        'level1':          {'solid': '#7c3aed', 'light': 'rgba(124,58,237,0.28)'},   # Vivid Purple
+        'level2':          {'solid': '#db2777', 'light': 'rgba(219,39,119,0.25)'},   # Deep Rose
+        'level3':          {'solid': '#ea580c', 'light': 'rgba(234,88,12,0.25)'},    # Burnt Orange
+        'user_group':      {'solid': '#059669', 'light': 'rgba(5,150,105,0.25)'},    # Deep Emerald
+        'cleaned_Country': {'solid': '#0284c7', 'light': 'rgba(2,132,199,0.25)'},   # Deep Sky
+    }
+    _LEVEL_LABELS = {
+        'Domain': 'Domain', 'level1': 'L1', 'level2': 'L2',
+        'level3': 'L3', 'user_group': 'User Group', 'cleaned_Country': 'Country'
+    }
+    _LEVEL_ORDER = ['Domain', 'level1', 'level2', 'level3', 'user_group', 'cleaned_Country']
+
+    def _build_node_level_map(filtered_df):
+        """Build a cleaned-label → level mapping, matching generate_flow's cleaning."""
+        node_map = {}
+        # Reverse order so earlier levels (Domain) override later ones
+        for col in reversed(_LEVEL_ORDER):
+            if col in filtered_df.columns:
+                for val in filtered_df[col].astype(str).unique():
+                    cleaned = val.replace("-", "").strip()
+                    if cleaned:
+                        node_map[cleaned] = col
+        return node_map
+
     def create_sankey_trace(filtered_df, visible=False):
         sankey_df = generate_flow(filtered_df)
         s_node_dict = dict(label=[])
@@ -315,19 +373,47 @@ def create_sankey_visualization(df_final):
         if not sankey_df.empty:
             all_nodes = sorted(list(pd.unique(sankey_df[['source', 'target']].values.ravel('K'))))
             wrapped_labels = [textwrap.fill(label, width=20).replace('\n', '<br>') for label in all_nodes]
+
+            # Build level map using same cleaning as generate_flow
+            level_map = _build_node_level_map(filtered_df)
+
+            # Assign colors based on taxonomy level
+            node_colors = []
+            node_levels = []
+            for node in all_nodes:
+                level = level_map.get(node, 'Domain')
+                node_levels.append(level)
+                node_colors.append(_LEVEL_COLORS.get(level, _LEVEL_COLORS['Domain'])['solid'])
+
+            # Link colors: semi-transparent version of source node color
+            source_indices = [all_nodes.index(s) for s in sankey_df.source]
+            target_indices = [all_nodes.index(t) for t in sankey_df.target]
+            link_colors = [_LEVEL_COLORS.get(node_levels[si], _LEVEL_COLORS['Domain'])['light'] for si in source_indices]
+
+            # Hover labels with level info
+            node_hover = [
+                f"<b>{all_nodes[i]}</b><br><span style='color:#94a3b8'>{_LEVEL_LABELS.get(node_levels[i], '')}</span>"
+                for i in range(len(all_nodes))
+            ]
+
             s_node_dict = dict(
-                pad=25, thickness=20, 
-                line=dict(color="black", width=0.5), 
-                label=wrapped_labels, 
-                color="blue"
+                pad=35, thickness=28,
+                line=dict(color="rgba(255,255,255,0.6)", width=2),
+                label=wrapped_labels,
+                color=node_colors,
+                customdata=node_hover,
+                hovertemplate='%{customdata}<extra></extra>',
+                hoverlabel=dict(font=dict(family="Inter, sans-serif", size=13)),
             )
             s_link_dict = dict(
-                source=[all_nodes.index(s) for s in sankey_df.source],
-                target=[all_nodes.index(t) for t in sankey_df.target],
-                value=sankey_df.count_1
+                source=source_indices,
+                target=target_indices,
+                value=sankey_df.count_1,
+                color=link_colors,
+                hovertemplate='%{source.label} → %{target.label}<br><b>%{value}</b> connections<extra></extra>'
             )
         
-        return go.Sankey(node=s_node_dict, link=s_link_dict, visible=visible)
+        return go.Sankey(node=s_node_dict, link=s_link_dict, visible=visible, arrangement='snap')
 
     updatemenus = []
     main_filter_columns = {
@@ -380,19 +466,22 @@ def create_sankey_visualization(df_final):
 
         updatemenus.append(dict(
              buttons=buttons, direction='down', showactive=True,
-             x=settings['x'], y=1.18, xanchor='left', yanchor='top'
+             x=settings['x'], y=1.18, xanchor='left', yanchor='top',
+             bgcolor='#f8fafc', bordercolor='#e2e8f0', borderwidth=1,
+             font=dict(size=12, family="'Inter', sans-serif", color='#334155')
         ))
 
     if fig.data:
          fig.data[0].visible = True
 
     fig.update_layout(
-        title_text="Taxonomy Flow Visualizer",
-        title_x=0.5,
+        title=dict(text=''),
         updatemenus=updatemenus,
-        margin=dict(l=10, r=10, t=120, b=20),
+        margin=dict(l=20, r=120, t=80, b=30),
         height=800,
-        font=dict(size=14, family="'Inter', Helvetica, Arial, sans-serif", color="#000000"),
+        paper_bgcolor='white',
+        plot_bgcolor='white',
+        font=dict(size=13, family="'Inter', Helvetica, Arial, sans-serif", color="#334155"),
         showlegend=False
     )
     
@@ -577,72 +666,38 @@ elif st.session_state.step == "Taxonomy":
     tab_graph, tab_structure = st.tabs(["Knowledge Graph", "Taxonomy Structure"])
     
     with tab_graph:
-        with st.spinner("Rendering Knowledge Graph..."):
-            if not st.session_state.demo_data.empty:
-                df = st.session_state.demo_data.copy()
-                
-                def safe_eval(x):
-                    if isinstance(x, str) and x.strip().startswith('['):
-                        try: return eval(x)
-                        except: return [x]
-                    return [x] if isinstance(x, str) else x
+        if not st.session_state.demo_data.empty:
+            df = st.session_state.demo_data.copy()
 
-                for col in ['extracted_Country', 'user_group']:
-                    if col in df.columns:
-                        df[col] = df[col].apply(safe_eval)
+            # Styled header with legend
+            st.markdown("""
+<div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+<div>
+<h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; font-family: 'Inter', sans-serif;">Taxonomy Flow Visualizer</h3>
+<p style="margin: 4px 0 0 0; font-size: 0.78rem; color: #94a3b8; font-family: 'Inter', sans-serif;">Domain → L1 → L2 → L3 → User Group → Country</p>
+</div>
+<div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #4f46e5;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">Domain</span></span>
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #7c3aed;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">L1</span></span>
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #db2777;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">L2</span></span>
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #ea580c;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">L3</span></span>
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #059669;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">User Group</span></span>
+<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #0284c7;"></span><span style="font-size: 11px; color: #64748b; font-weight: 600;">Country</span></span>
+</div>
+</div>
+""", unsafe_allow_html=True)
 
-                fig = create_sankey_visualization(df)
-                
-                scale_factor = st.session_state.get('sankey_zoom', 1.0)
-                
-                base_width = 1200
-                base_height = 800
-                fig.update_layout(
-                    width=int(base_width * scale_factor),
-                    height=int(base_height * scale_factor)
-                )
-
-                st.markdown("""
-                <style>
-                .stPlotlyChart svg text {
-                    text-rendering: geometricPrecision !important;
-                    -webkit-font-smoothing: antialiased;
-                }
-                /* Hide Plotly duplicated text mask halo outlines causing blurriness */
-                .stPlotlyChart svg text.textmask,
-                .stPlotlyChart svg text.label-text-mask,
-                .stPlotlyChart svg .sankey-node text.label-text-mask {
-                    display: none !important;
-                    stroke-width: 0 !important;
-                }
-                /* Kill strokes and enforce solid black on actual node labels */
-                .stPlotlyChart svg .node-label,
-                .stPlotlyChart svg .node-label tspan {
-                    stroke: none !important;
-                    text-shadow: none !important;
-                    fill: #000000 !important;
-                    -webkit-font-smoothing: antialiased;
-                }
-                .sankey-border-box {
-                    border: 1.5px solid #e2e8f0;
-                    border-radius: 12px;
-                    padding: 15px;
-                    background-color: #ffffff;
-                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-                    overflow: auto; /* Enables panning via scrollbars */
-                }
-                </style>
-                """, unsafe_allow_html=True)
-
-                st.markdown('<div class="sankey-border-box">', unsafe_allow_html=True)
-                st.plotly_chart(fig, use_container_width=False)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                col_scale, _ = st.columns([1, 4])
-                with col_scale:
-                    st.slider("Visual Zoom Scale", min_value=1.0, max_value=3.0, value=scale_factor, step=0.1, key="sankey_zoom")
-            else:
-                st.error("No demographic data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
+            scale_factor = st.session_state.get('sankey_zoom', 1.0)
+            
+            # D3-based Sankey with HTML labels
+            sankey_html = create_d3_sankey_html(df, height=800, scale_factor=scale_factor)
+            components.html(sankey_html, height=820, scrolling=True)
+            
+            col_scale, _ = st.columns([1, 4])
+            with col_scale:
+                st.slider("Visual Zoom Scale", min_value=1.0, max_value=3.0, value=scale_factor, step=0.1, key="sankey_zoom")
+        else:
+            st.error("No demographic data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
 
     with tab_structure:
         if not st.session_state.demo_data.empty:
@@ -833,8 +888,27 @@ elif st.session_state.step == "Data":
         df_work['level2'] = df_work['level2'].astype(str)
         df_work['level3'] = df_work['level3'].astype(str)
         df_work['level1'] = df_work['level1'].astype(str)
-        # Simulated complexity score based on prompt length
-        df_work['complexity'] = df_work['prompts'].astype(str).apply(lambda x: min(round(len(x) / 15, 1), 10.0))
+        # Multi-signal complexity score
+        def compute_complexity(text):
+            text = str(text)
+            words = text.split()
+            word_count = len(words)
+            if word_count == 0:
+                return 0.0
+            avg_word_len = np.mean([len(w) for w in words])
+            unique_ratio = len(set(w.lower() for w in words)) / word_count
+            sentence_count = max(text.count('.') + text.count('?') + text.count('!'), 1)
+            avg_sentence_len = word_count / sentence_count
+            # Weighted components normalized to ~0-10
+            score = (
+                min(word_count / 20, 3.0)        # length breadth (max 3)
+                + min(avg_word_len / 2.0, 2.5)    # vocabulary sophistication (max 2.5)
+                + unique_ratio * 2.5               # lexical diversity (max 2.5)
+                + min(avg_sentence_len / 10, 2.0)  # sentence complexity (max 2)
+            )
+            return round(min(score, 10.0), 1)
+
+        df_work['complexity'] = df_work['prompts'].apply(compute_complexity)
 
         # --- KPI Cards ---
         n_prompts = len(df_work)
@@ -855,6 +929,7 @@ elif st.session_state.step == "Data":
 <div class="content-card" style="padding: 1.25rem; margin-bottom: 0;">
 <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Linguistic Weight</div>
 <div style="font-size: 2rem; font-weight: 900; color: #ec4899;">{avg_complexity} <span style="font-size: 0.75rem; font-weight: 500; opacity: 0.5;">/10 avg</span></div>
+<div style="font-size: 10px; color: #94a3b8; margin-top: 6px; line-height: 1.4;">Composite of word count, avg word length, lexical diversity &amp; sentence complexity</div>
 </div>
 <div class="content-card" style="padding: 1.25rem; margin-bottom: 0;">
 <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Cluster Density</div>
@@ -865,8 +940,8 @@ elif st.session_state.step == "Data":
         st.markdown(kpi_html, unsafe_allow_html=True)
 
         # --- Tabbed Visualization Panel ---
-        tab_coverage, tab_linguistic, tab_tone, tab_nebula = st.tabs([
-            "📊 Coverage Map", "📈 Linguistic", "🎯 Tone Analysis", "✨ Semantic Nebula"
+        tab_coverage, tab_linguistic, tab_nebula = st.tabs([
+            "📊 Coverage Map", "📈 Linguistic", "✨ Semantic Nebula"
         ])
 
         with tab_coverage:
@@ -900,6 +975,18 @@ elif st.session_state.step == "Data":
             st.plotly_chart(fig_heat, use_container_width=True)
 
         with tab_linguistic:
+            # Explanation callout
+            st.markdown("""
+<div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+<span style="font-size: 1.25rem; flex-shrink: 0;">💡</span>
+<div style="font-size: 0.82rem; color: #3730a3; line-height: 1.6;">
+<strong>How to read this chart:</strong> Each dot is a synthetic prompt. The <strong>x-axis</strong> shows raw character length, while the <strong>y-axis</strong> shows the <em>Complexity Score</em> — a composite of <strong>word count</strong> (max 3 pts), <strong>average word length</strong> (max 2.5 pts), <strong>lexical diversity</strong> (max 2.5 pts), and <strong>average sentence length</strong> (max 2 pts). Prompts with diverse vocabulary and complex sentence structure score higher, even at the same character length.<br>
+<span style="color: #10b981; font-weight: 700;">● Green</span> = Low (≤ 4) &nbsp;
+<span style="color: #6366f1; font-weight: 700;">● Purple</span> = Medium (4–7) &nbsp;
+<span style="color: #ec4899; font-weight: 700;">● Pink</span> = High (&gt; 7)
+</div>
+</div>
+""", unsafe_allow_html=True)
             # Scatter: prompt length vs complexity
             scatter_df = df_work.copy()
             scatter_df['prompt_len'] = scatter_df['prompts'].astype(str).apply(len)
@@ -923,58 +1010,51 @@ elif st.session_state.step == "Data":
             )
             st.plotly_chart(fig_scatter, use_container_width=True)
 
-        with tab_tone:
-            # Radar: tone distribution from prompt keywords
-            tone_buckets = {'Formal': 0, 'Casual': 0, 'Curious': 0, 'Emotional': 0, 'Neutral': 0, 'Aggressive': 0}
-            for p in df_work['prompts'].astype(str):
-                pl = p.lower()
-                if any(w in pl for w in ['professional', 'academic', 'formal', 'research']):
-                    tone_buckets['Formal'] += 1
-                elif any(w in pl for w in ['casual', 'slang', 'friend']):
-                    tone_buckets['Casual'] += 1
-                elif any(w in pl for w in ['curious', 'question', 'wonder', 'how']):
-                    tone_buckets['Curious'] += 1
-                elif any(w in pl for w in ['sad', 'happy', 'angry', 'feel', 'emotion']):
-                    tone_buckets['Emotional'] += 1
-                elif any(w in pl for w in ['aggressive', 'hostile', 'demand']):
-                    tone_buckets['Aggressive'] += 1
-                else:
-                    tone_buckets['Neutral'] += 1
-
-            categories = list(tone_buckets.keys())
-            values = list(tone_buckets.values())
-            fig_radar = go.Figure(data=go.Scatterpolar(
-                r=values + [values[0]],
-                theta=categories + [categories[0]],
-                fill='toself',
-                fillcolor='rgba(99, 102, 241, 0.3)',
-                line=dict(color='#6366f1', width=3),
-                marker=dict(size=6, color='#6366f1')
-            ))
-            fig_radar.update_layout(
-                title=dict(text="TONE ANALYSIS", font=dict(size=13, color='#334155')),
-                polar=dict(
-                    radialaxis=dict(visible=True, showticklabels=False, gridcolor='#e2e8f0'),
-                    angularaxis=dict(tickfont=dict(size=12, color='#475569', weight='bold'), gridcolor='#e2e8f0')
-                ),
-                height=500, paper_bgcolor='white',
-                font_family="'Inter', sans-serif",
-                margin=dict(l=60, r=60, t=60, b=60),
-                showlegend=False
-            )
-            st.plotly_chart(fig_radar, use_container_width=True)
 
         with tab_nebula:
-            # Semantic Nebula: random 2D scatter with topic clustering
+            # Explanation callout
+            st.markdown("""
+<div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+<span style="font-size: 1.25rem; flex-shrink: 0;">✨</span>
+<div style="font-size: 0.82rem; color: #94a3b8; line-height: 1.6;">
+<strong style="color: #e2e8f0;">Semantic Nebula</strong> visualizes prompt diversity within and across topics. Each dot is a prompt; dots are <strong style="color: #e2e8f0;">positioned</strong> using a blend of topic grouping (55%), text features (35% — avg word length on the horizontal axis, lexical diversity on the vertical), and a small random jitter (10%). <strong style="color: #e2e8f0;">Dot size</strong> reflects the complexity score. Prompts with similar vocabulary naturally cluster together, while linguistically distinct prompts spread apart — even within the same topic.
+</div>
+</div>
+""", unsafe_allow_html=True)
+            # Semantic Nebula: text-feature-driven 2D scatter with topic clustering
             np.random.seed(42)
             nebula_df = df_work.copy()
             unique_topics = nebula_df['level2'].unique()
-            topic_centers = {t: (np.random.uniform(15, 85), np.random.uniform(15, 85)) for t in unique_topics}
+            topic_centers = {t: (np.random.uniform(20, 80), np.random.uniform(20, 80)) for t in unique_topics}
             NEBULA_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16']
             topic_color_map = {t: NEBULA_COLORS[i % len(NEBULA_COLORS)] for i, t in enumerate(unique_topics)}
 
-            nebula_df['x'] = nebula_df['level2'].map(lambda t: topic_centers[t][0] + np.random.normal(0, 8))
-            nebula_df['y'] = nebula_df['level2'].map(lambda t: topic_centers[t][1] + np.random.normal(0, 8))
+            # Derive features from actual text content
+            def _nebula_features(text):
+                text = str(text)
+                words = text.lower().split()
+                wc = len(words)
+                if wc == 0:
+                    return 0.0, 0.0
+                avg_wl = np.mean([len(w) for w in words])   # vocabulary weight
+                uniq_r = len(set(words)) / wc               # lexical diversity
+                return avg_wl, uniq_r
+
+            nebula_df[['_feat_wl', '_feat_ur']] = nebula_df['prompts'].apply(
+                lambda t: pd.Series(_nebula_features(t))
+            )
+            # Normalize features to [0, 60] range
+            for feat in ['_feat_wl', '_feat_ur']:
+                fmin, fmax = nebula_df[feat].min(), nebula_df[feat].max()
+                nebula_df[feat] = (nebula_df[feat] - fmin) / (max(fmax - fmin, 1e-6)) * 60
+
+            # Blend: 55% topic center + 35% text feature + 10% jitter
+            nebula_df['x'] = nebula_df.apply(
+                lambda r: topic_centers[r['level2']][0] * 0.55 + (r['_feat_wl'] + 20) * 0.35 + np.random.normal(0, 3), axis=1
+            )
+            nebula_df['y'] = nebula_df.apply(
+                lambda r: topic_centers[r['level2']][1] * 0.55 + (r['_feat_ur'] + 20) * 0.35 + np.random.normal(0, 3), axis=1
+            )
             nebula_df['color'] = nebula_df['level2'].map(topic_color_map)
             nebula_df['size'] = nebula_df['complexity'] * 3
 
@@ -1012,37 +1092,12 @@ elif st.session_state.step == "Data":
 """, unsafe_allow_html=True)
         gt_df = df_work[['level2', 'level3', 'prompts', 'complexity', 'extracted_Country', 'Domain']].copy()
 
-        # Classify tone for each prompt
-        def classify_tone(prompt):
-            pl = str(prompt).lower()
-            if any(w in pl for w in ['professional', 'academic', 'formal', 'research']):
-                return 'Formal'
-            elif any(w in pl for w in ['casual', 'slang', 'friend']):
-                return 'Casual'
-            elif any(w in pl for w in ['curious', 'question', 'wonder', 'how']):
-                return 'Curious'
-            elif any(w in pl for w in ['sad', 'happy', 'angry', 'feel', 'emotion']):
-                return 'Emotional'
-            elif any(w in pl for w in ['aggressive', 'hostile', 'demand']):
-                return 'Aggressive'
-            return 'Neutral'
-
-        gt_df = gt_df.copy()
-        gt_df['tone'] = gt_df['prompts'].apply(classify_tone)
-
-        tone_colors = {
-            'Formal': ('#eef2ff', '#4f46e5'), 'Casual': ('#f0fdf4', '#16a34a'),
-            'Curious': ('#fefce8', '#ca8a04'), 'Emotional': ('#fdf2f8', '#db2777'),
-            'Aggressive': ('#fef2f2', '#dc2626'), 'Neutral': ('#f8fafc', '#64748b')
-        }
-
         # Rename columns for spreadsheet appearance
-        display_df = gt_df[['level2', 'level3', 'prompts', 'complexity', 'tone', 'extracted_Country', 'Domain']].rename(columns={
+        display_df = gt_df[['level2', 'level3', 'prompts', 'complexity', 'extracted_Country', 'Domain']].rename(columns={
             'level2': 'L2 Subtopic',
             'level3': 'L3 Leaf',
             'prompts': 'Synthetic Prompt',
             'complexity': 'Complexity Score',
-            'tone': 'Tone',
             'extracted_Country': 'Country',
             'Domain': 'Domain'
         })
@@ -1050,24 +1105,19 @@ elif st.session_state.step == "Data":
         # --- Table Filters ---
         st.markdown('<div style="margin-top: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #6366f1; font-size: 14px;">🔍</span><span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Table Filters</span></div>', unsafe_allow_html=True)
         
-        col_f1, col_f2, col_f3 = st.columns(3)
+        col_f1, col_f2 = st.columns(2)
         with col_f1:
             l2_options = sorted(display_df['L2 Subtopic'].dropna().unique().tolist())
             selected_l2 = st.multiselect("L2 Subtopic", options=l2_options, placeholder="All Subtopics")
         with col_f2:
             l3_options = sorted(display_df['L3 Leaf'].dropna().unique().tolist())
             selected_l3 = st.multiselect("L3 Leaf", options=l3_options, placeholder="All L3 Leafs")
-        with col_f3:
-            tone_options = sorted(display_df['Tone'].dropna().unique().tolist())
-            selected_tone = st.multiselect("Tone", options=tone_options, placeholder="All Tones")
 
         # Apply filters
         if selected_l2:
             display_df = display_df[display_df['L2 Subtopic'].isin(selected_l2)]
         if selected_l3:
             display_df = display_df[display_df['L3 Leaf'].isin(selected_l3)]
-        if selected_tone:
-            display_df = display_df[display_df['Tone'].isin(selected_tone)]
 
         # Action row for download button
         col_btn, _ = st.columns([1, 2])
