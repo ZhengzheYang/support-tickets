@@ -1152,16 +1152,11 @@ elif st.session_state.step == "Data":
 elif st.session_state.step == "Evaluate":
     st.markdown("""
 <div class="content-card" style="
-    background-image: 
-        linear-gradient(to right, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 40%, rgba(15, 23, 42, 0.1) 100%),
-        url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop');
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
     border: none;
-    border-radius: 12px;
     padding: 3rem 2.5rem;
     margin-bottom: 2rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
 ">
 <h2 style="margin-top:0; color: white; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Model Response Evaluation</h2>
 <p style="color: #cbd5e1; font-size: 1.1rem; max-width: 600px; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Analyze disclosure compliance across models. Medical responses must include appropriate disclaimers — failures indicate missing disclosures.</p>
