@@ -833,9 +833,8 @@ elif st.session_state.step == "Taxonomy":
                              except: pass
                              
                          if isinstance(url_val, list):
-                             for idx, u in enumerate(url_val):
-                                 display_title = title if len(url_val) == 1 else f"{title} [{idx+1}]"
-                                 st.markdown(f"- [{display_title}]({u})")
+                             if url_val:
+                                 st.markdown(f"- [{title}]({url_val[0]})")
                          elif isinstance(url_val, str) and url_val:
                              st.markdown(f"- [{title}]({url_val})")
                          else:
