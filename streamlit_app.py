@@ -1181,24 +1181,35 @@ elif st.session_state.step == "Evaluate":
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown('<label style="font-weight: 700; font-size: 0.85rem; color: #475569;">Target Model</label>', unsafe_allow_html=True)
-                models = ['All'] + sorted(eval_df['target_model'].dropna().unique().tolist())
-                selected_model = st.radio("Model", models, horizontal=True, label_visibility="collapsed")
-            with col2:
-                st.markdown('<label style="font-weight: 700; font-size: 0.85rem; color: #475569;">Dataset Source</label>', unsafe_allow_html=True)
-                sources = ['All'] + sorted(eval_df['dataset_source'].dropna().unique().tolist())
-                selected_source = st.radio("Source", sources, horizontal=True, label_visibility="collapsed")
+                models_raw = ['All'] + sorted(eval_df['target_model'].dropna().unique().tolist())
+                mapping = {}
+                for m in models_raw:
+                    if m == 'All':
+                        mapping[m] = 'All'
+                    elif m.lower() == 'gemini':
+                        mapping['Gemini'] = m
+                    elif m.lower() == 'gpt':
+                        mapping['GPT'] = m
+                    elif m.lower() == 'llama':
+                        mapping['Llama'] = m
+                    else:
+                        mapping[m.capitalize()] = m
+                
+                display_names = list(mapping.keys())
+                selected_display = st.selectbox("Model", display_names, label_visibility="collapsed")
+                selected_model = mapping[selected_display]
+
             
             st.markdown("<br>", unsafe_allow_html=True)
             submit_col, _ = st.columns([1, 4])
             with submit_col:
                 submitted = st.form_submit_button("Generate", type="primary")
 
-        # Auto-filter with All support
+        # Auto-filter
         filtered_df = eval_df.copy()
+        filtered_df = filtered_df[filtered_df['dataset_source'] == 'sarai']
         if selected_model != 'All':
             filtered_df = filtered_df[filtered_df['target_model'] == selected_model]
-        if selected_source != 'All':
-            filtered_df = filtered_df[filtered_df['dataset_source'] == selected_source]
 
         if submitted and not filtered_df.empty:
             n_total = len(filtered_df)
