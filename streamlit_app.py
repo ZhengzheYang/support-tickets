@@ -1158,8 +1158,8 @@ elif st.session_state.step == "Evaluate":
     margin-bottom: 2rem;
     box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
 ">
-<h2 style="margin-top:0; color: white; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Model Response Evaluation</h2>
-<p style="color: #cbd5e1; font-size: 1.1rem; max-width: 600px; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Analyze disclosure compliance across models. Medical responses must include appropriate disclaimers — failures indicate missing disclosures.</p>
+<h2 style="margin-top:0; color: white; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Evaluate Your Target Model</h2>
+<p style="color: #cbd5e1; font-size: 1.1rem; max-width: 600px; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Generate responses from the model you want to evaluate</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1175,14 +1175,7 @@ elif st.session_state.step == "Evaluate":
     
     if not eval_df.empty:
         # --- Filters ---
-        st.markdown("""
-<div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-<div style="background-color: #fee2e2; border-radius: 8px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;">
-<span style="font-size: 1.5rem;">🎯</span>
-</div>
-<h3 style="margin: 0; color: #0f172a; font-size: 1.5rem; font-weight: 800;">1. Select Evaluation Scope</h3>
-</div>
-""", unsafe_allow_html=True)
+
 
         with st.form("eval_scope_form", border=False):
             col1, col2 = st.columns(2)
