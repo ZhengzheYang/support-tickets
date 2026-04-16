@@ -509,7 +509,7 @@ def set_step(new_step):
 with st.sidebar:
     st.markdown("### Navigation")
     
-    steps = ["Concept", "Taxonomy", "Data", "Evaluate", "Annotation", "Analyze"]
+    steps = ["Concept", "Taxonomy", "Data", "Evaluate", "Autorater", "Analyze"]
     icons = ["💡", "🕸️", "🗄️", "✅", "📝", "📊"]
     
     for i, step in enumerate(steps):
@@ -1277,12 +1277,12 @@ elif st.session_state.step == "Evaluate":
     else:
         st.warning("Could not load evaluation_data.csv")
 
-    if st.button("Next: Annotation Session", type="primary"):
+    if st.button("Next: Define Autorator", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 4)
-        st.session_state.step = "Annotation"
+        st.session_state.step = "Autorater"
         st.rerun()
 
-elif st.session_state.step == "Annotation":
+elif st.session_state.step == "Autorater":
     st.markdown("""
 <div class="content-card" style="
     background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
@@ -1293,7 +1293,7 @@ elif st.session_state.step == "Annotation":
 <div style="background: rgba(255,255,255,0.2); border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
 <span style="font-size: 1.5rem;">📝</span>
 </div>
-<h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Annotation Session</h2>
+<h2 style="margin: 0; color: white; font-size: 2rem; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Define Autorator</h2>
 </div>
 <p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; max-width: 600px; margin: 0;">Configure the evaluation rubric and provide structured feedback on model annotations.</p>
 </div>
@@ -1359,11 +1359,11 @@ Classification:"""
         
         st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem;">
 <span style="font-size: 1.1rem;">🤖</span>
-<label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Select Model</label>
+<label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Autorater model</label>
 </div>""", unsafe_allow_html=True)
-        selected_model = st.selectbox("Select Model", ["Gemini", "GPT"], label_visibility="collapsed")
+        selected_model = st.selectbox("Autorater model", ["Gemini", "GPT"], label_visibility="collapsed")
         
-        if st.button("Start Annotation", type="secondary", key="start_annotation_btn"):
+        if st.button("Start Autorater", type="secondary", key="start_autorater_btn"):
             st.session_state.annotation_started = True
 
     with col2:
@@ -1372,7 +1372,7 @@ Classification:"""
 <div style="background-color: #dbeafe; border-radius: 8px; padding: 0.4rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
 <span style="font-size: 1.1rem;">💬</span>
 </div>
-<h3 style="margin: 0; color: #0f172a; font-size: 1.25rem; font-weight: 800;">Annotation Feedback</h3>
+<h3 style="margin: 0; color: #0f172a; font-size: 1.25rem; font-weight: 800;">Autorater Feedback</h3>
 </div>
 """, unsafe_allow_html=True)
         if st.session_state.get("annotation_started", False):
@@ -1411,7 +1411,7 @@ Classification:"""
             except FileNotFoundError:
                 st.error("evaluation_data.csv not found.")
         else:
-            st.info("Click 'Start Annotation' on the left to load the feedback data.")
+            st.info("Click 'Start Autorater' on the left to load the feedback data.")
 
     if st.button("Next: Analyze", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 5)
