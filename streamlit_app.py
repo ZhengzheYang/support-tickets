@@ -1150,6 +1150,9 @@ elif st.session_state.step == "Data":
         st.rerun()
 
 elif st.session_state.step == "Evaluate":
+    if 'eval_generated' not in st.session_state:
+        st.session_state.eval_generated = False
+
     st.markdown("""
 <div class="content-card" style="
     background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
@@ -1196,7 +1199,7 @@ elif st.session_state.step == "Evaluate":
                         mapping[m.capitalize()] = m
                 
                 display_names = list(mapping.keys())
-                selected_display = st.selectbox("Model", display_names, label_visibility="collapsed")
+                selected_display = st.selectbox("Model", display_names, label_visibility="collapsed", key="selected_model_display")
                 selected_model = mapping[selected_display]
 
             
@@ -1204,6 +1207,8 @@ elif st.session_state.step == "Evaluate":
             submit_col, _ = st.columns([1, 4])
             with submit_col:
                 submitted = st.form_submit_button("Generate", type="primary")
+                if submitted:
+                    st.session_state.eval_generated = True
 
         # Auto-filter
         filtered_df = eval_df.copy()
@@ -1211,7 +1216,7 @@ elif st.session_state.step == "Evaluate":
         if selected_model != 'All':
             filtered_df = filtered_df[filtered_df['target_model'] == selected_model]
 
-        if submitted and not filtered_df.empty:
+        if st.session_state.eval_generated and not filtered_df.empty:
             n_total = len(filtered_df)
 
             # --- Full Styled Data Table ---
@@ -1224,36 +1229,47 @@ elif st.session_state.step == "Evaluate":
 </div>
 """, unsafe_allow_html=True)
 
-            show_df = filtered_df.head(100)
-            n_show = len(show_df)
-            label_fill = ['#ecfdf5' if l == 'Disclosure' else '#fef2f2' for l in show_df['label']]
-            label_font_color = ['#059669' if l == 'Disclosure' else '#dc2626' for l in show_df['label']]
+            # Prepare display dataframe
+            display_df = filtered_df[['query', 'response', 'target_model']].copy()
+            
+            def clean_query(q):
+                if isinstance(q, str) and q.strip().startswith('['):
+                    try:
+                        parsed = ast.literal_eval(q)
+                        if isinstance(parsed, list) and len(parsed) > 0:
+                            return parsed[0]
+                    except:
+                        pass
+                return q
+            
+            display_df['query'] = display_df['query'].apply(clean_query)
+            display_df = display_df.rename(columns={'target_model': 'model name'})
 
-            fig_full = go.Figure(data=[go.Table(
-                columnwidth=[250, 80, 400],
-                header=dict(
-                    values=['<b>Query</b>', '<b>Label</b>', '<b>Response</b>'],
-                    fill_color='#f8fafc', font=dict(size=11, color='#94a3b8', family="'Inter', sans-serif"),
-                    align='left', height=40, line_color='#f1f5f9'
-                ),
-                cells=dict(
-                    values=[
-                        [f"<i>{str(q)[:120]}{'...' if len(str(q)) > 120 else ''}</i>" for q in show_df['query']],
-                        [f"<b>{l}</b>" for l in show_df['label']],
-                        [f"{str(r)[:180]}{'...' if len(str(r)) > 180 else ''}" for r in show_df['response']]
-                    ],
-                    fill_color=[['white'] * n_show, label_fill, ['white'] * n_show],
-                    font=dict(size=11, family="'Inter', sans-serif", color=[
-                        ['#334155'] * n_show, label_font_color, ['#475569'] * n_show
-                    ]),
-                    align='left', height=50, line_color='#f1f5f9'
+            
+            # Action row for download button
+            col_btn, _ = st.columns([1, 2])
+            with col_btn:
+                csv_data = display_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Evaluation Data (CSV)",
+                    data=csv_data,
+                    file_name='evaluation_data.csv',
+                    mime='text/csv',
+                    use_container_width=True
                 )
-            )])
-            fig_full.update_layout(
-                height=max(400, min(n_show * 55, 800)),
-                margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor='white'
+
+            # Interactive Data Table (Excel style)
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                height=600,
+                column_config={
+                    "query": st.column_config.TextColumn("Query", width="large"),
+                    "response": st.column_config.TextColumn("Response", width="large"),
+                    "model name": st.column_config.TextColumn("Model Name", width="medium"),
+                }
             )
-            st.plotly_chart(fig_full, use_container_width=True)
+
 
         elif submitted:
             st.info("No data found for the selected combination.")
