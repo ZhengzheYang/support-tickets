@@ -1363,7 +1363,7 @@ Classification:"""
 </div>""", unsafe_allow_html=True)
         selected_model = st.selectbox("Autorater model", ["Gemini", "GPT"], label_visibility="collapsed")
         
-        if st.button("Start Autorater", type="secondary", key="start_autorater_btn"):
+        if st.button("Rate", type="secondary", key="start_autorater_btn"):
             st.session_state.annotation_started = True
 
     with col2:
@@ -1411,9 +1411,9 @@ Classification:"""
             except FileNotFoundError:
                 st.error("evaluation_data.csv not found.")
         else:
-            st.info("Click 'Start Autorater' on the left to load the feedback data.")
+            st.info("Click 'Rate' on the left to load the feedback data.")
 
-    if st.button("Next: Analyze", type="primary"):
+    if st.button("Next: Analyze ratings", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 5)
         st.session_state.step = "Analyze"
         st.rerun()
