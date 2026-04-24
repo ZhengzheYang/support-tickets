@@ -1379,6 +1379,18 @@ Classification:"""
             try:
                 eval_df = pd.read_csv("evaluation_data.csv")
                 display_df = eval_df.iloc[:, :5].copy()
+                
+                def clean_query(q):
+                    if isinstance(q, str) and q.strip().startswith('['):
+                        try:
+                            parsed = ast.literal_eval(q)
+                            if isinstance(parsed, list) and len(parsed) > 0:
+                                return parsed[0]
+                        except:
+                            pass
+                    return q
+                
+                display_df['query'] = display_df['query'].apply(clean_query)
                 headers = [f"<b>{col}</b>" for col in display_df.columns]
                 
                 n_rows = len(display_df)
@@ -1386,27 +1398,11 @@ Classification:"""
                 highlight_fill = ['#fef08a'] * n_rows
                 fill_color = [white_fill, white_fill, white_fill, white_fill, highlight_fill]
                 
-                fig_table = go.Figure(data=[go.Table(
-                    columnwidth=[100, 100, 200, 200, 100],
-                    header=dict(
-                        values=headers,
-                        fill_color='#f8fafc', font=dict(size=12, color='#94a3b8', family="'Inter', sans-serif"),
-                        align='left', height=40, line_color='#f1f5f9'
-                    ),
-                    cells=dict(
-                        values=[display_df[col] for col in display_df.columns],
-                        fill_color=fill_color,
-                        font=dict(size=11, family="'Inter', sans-serif", color='#334155'),
-                        align='left', height=40,
-                        line_color='#f1f5f9'
-                    )
-                )])
-                fig_table.update_layout(
+                st.dataframe(
+                    display_df,
+                    use_container_width=True,
                     height=max(400, min(len(display_df) * 45, 600)),
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    paper_bgcolor='white'
                 )
-                st.plotly_chart(fig_table, use_container_width=True)
                 
             except FileNotFoundError:
                 st.error("evaluation_data.csv not found.")
