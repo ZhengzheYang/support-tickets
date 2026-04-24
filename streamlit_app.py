@@ -1969,9 +1969,9 @@ elif st.session_state.step == "Analyze":
     )
     t6, t7, t9 = st.tabs(
         [
-            "L2 x Occupation x rating",
-            "L2 x Demographics x rating",
-            "User group x demographics x rating",
+            "L2 x Occupation x Rating",
+            "L2 x Demographics x Rating",
+            "User Group x Demographics x Rating",
         ]
     )
 
