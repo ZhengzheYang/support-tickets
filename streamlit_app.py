@@ -1505,7 +1505,7 @@ elif st.session_state.step == "Analyze":
                     z=df_heatmap_l1.values,
                     x=df_heatmap_l1.columns,
                     y=df_heatmap_l1.index,
-                    colorscale="Sunset",
+                    colorscale="Blues",
                     zmin=0,
                     zmax=100,
                     text=df_heatmap_l1.values,
@@ -1600,7 +1600,7 @@ elif st.session_state.step == "Analyze":
                     z=df_heatmap.values,
                     x=df_heatmap.columns,
                     y=df_heatmap.index,
-                    colorscale="Sunset",
+                    colorscale="Blues",
                     zmin=0,
                     zmax=100,
                     text=df_heatmap.values,
@@ -1701,7 +1701,7 @@ elif st.session_state.step == "Analyze":
                     z=df_heatmap_ug.values,
                     x=df_heatmap_ug.columns,
                     y=df_heatmap_ug.index,
-                    colorscale="Sunset",
+                    colorscale="Blues",
                     zmin=0,
                     zmax=100,
                     text=df_heatmap_ug.values,
@@ -1807,7 +1807,7 @@ elif st.session_state.step == "Analyze":
                     z=df_heatmap_demo.values,
                     x=df_heatmap_demo.columns,
                     y=df_heatmap_demo.index,
-                    colorscale="Sunset",
+                    colorscale="Blues",
                     zmin=0,
                     zmax=100,
                     text=df_heatmap_demo.values,
@@ -1910,7 +1910,7 @@ elif st.session_state.step == "Analyze":
                     z=df_heatmap_occ.values,
                     x=df_heatmap_occ.columns,
                     y=df_heatmap_occ.index,
-                    colorscale="Sunset",
+                    colorscale="Blues",
                     zmin=0,
                     zmax=100,
                     text=df_heatmap_occ.values,
@@ -2158,7 +2158,7 @@ elif st.session_state.step == "Analyze":
             )
 
             heatmap_args = dict(
-                colorscale="Sunset",
+                colorscale="Blues",
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
@@ -2364,7 +2364,7 @@ elif st.session_state.step == "Analyze":
             )
 
             heatmap_args = dict(
-                colorscale="Sunset",
+                colorscale="Blues",
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
@@ -2571,7 +2571,7 @@ elif st.session_state.step == "Analyze":
             )
 
             heatmap_args = dict(
-                colorscale="Sunset",
+                colorscale="Blues",
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
