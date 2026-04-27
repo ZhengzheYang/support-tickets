@@ -1510,7 +1510,7 @@ elif st.session_state.step == "Analyze":
                     zmax=100,
                     text=df_heatmap_l1.values,
                     texttemplate="%{text:.1f}%",
-                    textfont={"size": 12},
+                    textfont={"size": 14, "color": "black"},
                     colorbar=dict(
                         title="Safety Rate (%)",
                         thickness=15,
@@ -1522,6 +1522,7 @@ elif st.session_state.step == "Analyze":
                 )
             )
 
+            chart_height = max(600, len(df_heatmap_l1.index) * 40 + 200)
             fig_l1.update_layout(
                 title={
                     "text": "<b>Figure 1:</b> Binary Safety Rate by Model and Level 1 Category",
@@ -1533,7 +1534,7 @@ elif st.session_state.step == "Analyze":
                 },
                 template="simple_white",
                 width=max(900, len(df_heatmap_l1.columns) * 180 + 400),
-                height=max(600, len(df_heatmap_l1.index) * 40 + 200),
+                height=chart_height,
                 font=FONT_STYLE,
                 margin=dict(l=250, r=100, t=50, b=120),
             )
@@ -1554,7 +1555,8 @@ elif st.session_state.step == "Analyze":
                 autorange="reversed",
             )
 
-            st.plotly_chart(fig_l1, use_container_width=True)
+            html_l1 = fig_l1.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_l1, height=chart_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
 
@@ -1605,7 +1607,7 @@ elif st.session_state.step == "Analyze":
                     zmax=100,
                     text=df_heatmap.values,
                     texttemplate="%{text:.1f}%",
-                    textfont={"size": 12},
+                    textfont={"size": 14, "color": "black"},
                     colorbar=dict(
                         title="Safety Rate (%)",
                         thickness=15,
@@ -1617,6 +1619,7 @@ elif st.session_state.step == "Analyze":
                 )
             )
 
+            chart_height = max(600, len(df_heatmap.index) * 40 + 200)
             fig.update_layout(
                 title={
                     "text": "<b>Figure 3:</b> Binary Safety Rate by Model and Level 2 Category",
@@ -1628,7 +1631,7 @@ elif st.session_state.step == "Analyze":
                 },
                 template="simple_white",
                 width=max(900, len(df_heatmap.columns) * 180 + 400),
-                height=max(600, len(df_heatmap.index) * 40 + 200),
+                height=chart_height,
                 font=FONT_STYLE,
                 margin=dict(l=250, r=100, t=50, b=120),
             )
@@ -1649,7 +1652,8 @@ elif st.session_state.step == "Analyze":
                 autorange="reversed",
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            html_l2 = fig.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_l2, height=chart_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
 
@@ -1706,7 +1710,7 @@ elif st.session_state.step == "Analyze":
                     zmax=100,
                     text=df_heatmap_ug.values,
                     texttemplate="%{text:.1f}%",
-                    textfont={"size": 12},
+                    textfont={"size": 14, "color": "black"},
                     colorbar=dict(
                         title="Safety Rate (%)",
                         thickness=15,
@@ -1718,6 +1722,7 @@ elif st.session_state.step == "Analyze":
                 )
             )
 
+            chart_height = max(600, len(df_heatmap_ug.index) * 40 + 200)
             fig_ug.update_layout(
                 title={
                     "text": "<b>Figure 4:</b> Binary Safety Rate by Model and User Group",
@@ -1729,7 +1734,7 @@ elif st.session_state.step == "Analyze":
                 },
                 template="simple_white",
                 width=max(900, len(df_heatmap_ug.columns) * 180 + 400),
-                height=max(600, len(df_heatmap_ug.index) * 40 + 200),
+                height=chart_height,
                 font=FONT_STYLE,
                 margin=dict(l=250, r=100, t=50, b=120),
             )
@@ -1750,7 +1755,8 @@ elif st.session_state.step == "Analyze":
                 autorange="reversed",
             )
 
-            st.plotly_chart(fig_ug, use_container_width=True)
+            html_ug = fig_ug.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_ug, height=chart_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
     with t4:
@@ -1812,7 +1818,7 @@ elif st.session_state.step == "Analyze":
                     zmax=100,
                     text=df_heatmap_demo.values,
                     texttemplate="%{text:.1f}%",
-                    textfont={"size": 12},
+                    textfont={"size": 14, "color": "black"},
                     colorbar=dict(
                         title="Safety Rate (%)",
                         thickness=15,
@@ -1824,6 +1830,7 @@ elif st.session_state.step == "Analyze":
                 )
             )
 
+            chart_height = max(600, len(df_heatmap_demo.index) * 40 + 200)
             fig_demo.update_layout(
                 title={
                     "text": "<b>Figure 5:</b> Segmented Binary Safety Rate by Model and Demographics",
@@ -1835,7 +1842,7 @@ elif st.session_state.step == "Analyze":
                 },
                 template="simple_white",
                 width=max(900, len(df_heatmap_demo.columns) * 180 + 400),
-                height=max(600, len(df_heatmap_demo.index) * 40 + 200),
+                height=chart_height,
                 font=FONT_STYLE,
                 margin=dict(l=250, r=100, t=50, b=120),
             )
@@ -1856,7 +1863,8 @@ elif st.session_state.step == "Analyze":
                 autorange="reversed",
             )
 
-            st.plotly_chart(fig_demo, use_container_width=True)
+            html_demo = fig_demo.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_demo, height=chart_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
     with t5:
@@ -1915,7 +1923,7 @@ elif st.session_state.step == "Analyze":
                     zmax=100,
                     text=df_heatmap_occ.values,
                     texttemplate="%{text:.1f}%",
-                    textfont={"size": 12},
+                    textfont={"size": 14, "color": "black"},
                     colorbar=dict(
                         title="Safety Rate (%)",
                         thickness=15,
@@ -1927,6 +1935,7 @@ elif st.session_state.step == "Analyze":
                 )
             )
 
+            chart_height = max(600, len(df_heatmap_occ.index) * 40 + 200)
             fig_occ.update_layout(
                 title={
                     "text": "<b>Figure 6:</b> Segmented Binary Safety Rate by Model and Occupation",
@@ -1938,7 +1947,7 @@ elif st.session_state.step == "Analyze":
                 },
                 template="simple_white",
                 width=max(900, len(df_heatmap_occ.columns) * 180 + 400),
-                height=max(600, len(df_heatmap_occ.index) * 40 + 200),
+                height=chart_height,
                 font=FONT_STYLE,
                 margin=dict(l=250, r=100, t=50, b=120),
             )
@@ -1959,7 +1968,8 @@ elif st.session_state.step == "Analyze":
                 autorange="reversed",
             )
 
-            st.plotly_chart(fig_occ, use_container_width=True)
+            html_occ = fig_occ.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_occ, height=chart_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
 
@@ -2162,7 +2172,7 @@ elif st.session_state.step == "Analyze":
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
-                textfont={"size": 12},
+                textfont={"size": 14, "color": "black"},
             )
 
             fig.add_trace(
@@ -2235,7 +2245,8 @@ elif st.session_state.step == "Analyze":
             fig.update_xaxes(tickangle=45, tickfont=dict(size=12))
             fig.update_yaxes(tickfont=dict(size=13), row=1, col=1)
 
-            st.plotly_chart(fig, use_container_width=True)
+            html_inter1 = fig.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_inter1, height=dynamic_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
     with t7:
@@ -2368,7 +2379,7 @@ elif st.session_state.step == "Analyze":
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
-                textfont={"size": 12},
+                textfont={"size": 14, "color": "black"},
             )
 
             fig_t7.add_trace(
@@ -2441,7 +2452,8 @@ elif st.session_state.step == "Analyze":
             fig_t7.update_xaxes(tickangle=45, tickfont=dict(size=12))
             fig_t7.update_yaxes(tickfont=dict(size=13), title_standoff=30, row=1, col=1)
 
-            st.plotly_chart(fig_t7, use_container_width=True)
+            html_inter2 = fig_t7.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_inter2, height=dynamic_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
 
@@ -2575,7 +2587,7 @@ elif st.session_state.step == "Analyze":
                 zmin=0,
                 zmax=100,
                 texttemplate="%{z:.1f}",
-                textfont={"size": 12},
+                textfont={"size": 14, "color": "black"},
             )
 
             fig_t9.add_trace(
@@ -2648,7 +2660,8 @@ elif st.session_state.step == "Analyze":
             fig_t9.update_xaxes(tickangle=45, tickfont=dict(size=12))
             fig_t9.update_yaxes(tickfont=dict(size=13), title_standoff=30, row=1, col=1)
 
-            st.plotly_chart(fig_t9, use_container_width=True)
+            html_inter3 = fig_t9.to_html(full_html=True, include_plotlyjs='cdn')
+            components.html(html_inter3, height=dynamic_height + 50, scrolling=True)
         else:
             st.warning("analyse.csv data not found.")
 
