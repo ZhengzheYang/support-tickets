@@ -490,7 +490,7 @@ def create_sankey_visualization(df_final):
 
 # Application State
 if 'step' not in st.session_state:
-    st.session_state.step = "Concept"
+    st.session_state.step = "Read Me"
 
 if 'highest_step' not in st.session_state:
     st.session_state.highest_step = 0
@@ -509,8 +509,8 @@ def set_step(new_step):
 with st.sidebar:
     st.markdown("### Navigation")
     
-    steps = ["Concept", "Taxonomy", "Data", "Evaluate", "Autorater", "Analyze"]
-    icons = ["💡", "🕸️", "🗄️", "✅", "📝", "📊"]
+    steps = ["Read Me", "Concept", "Taxonomy", "Data", "Evaluate", "Autorater", "Analyze"]
+    icons = ["📖", "💡", "🕸️", "🗄️", "✅", "📝", "📊"]
     
     for i, step in enumerate(steps):
         is_active = st.session_state.step == step
@@ -526,7 +526,79 @@ with st.sidebar:
 
 
 # Main Content Area
-if st.session_state.step == "Concept":
+if st.session_state.step == "Read Me":
+    st.title("📖 User Guide: NodeSynth")
+
+    st.markdown(
+        "Welcome to the NodeSynth prototype. NodeSynth is a systematic, social-science-informed, and evidence-grounded methodology for generating socially relevant synthetic queries for AI model evaluation. It enables a holistic assessment of model behavior across sensitive domains and complex policies."
+    )
+
+    st.markdown("---")
+
+    # The Challenge
+    st.markdown(
+        """
+    <div style="background-color: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; margin-bottom: 1rem;">
+        <h3 style="margin-top: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">📄 The Challenge</h3>
+        <p style="color: #4b5563; line-height: 1.6; margin-bottom: 0.75rem;">Standard benchmarks and manual query creation struggle to capture real-world sociotechnical nuance or scale effectively. While generic synthetic data offers an alternative, these datasets often contain unintended biases, lack diversity, and are inaccurate for highly-sensitive domains.</p>
+        <p style="color: #4b5563; line-height: 1.6; margin-bottom: 0;"><strong>NodeSynth</strong> addresses this by breaking down complex safety policies (e.g., harassment) and sensitive domains (e.g., education) into granular taxonomies. This granularity exposes blind spots in independent guard models and can elicit failure rates up to 20 times higher than human-authored data.</p>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### 🔄 End-to-End Workflow")
+    st.markdown(
+        """
+    1. **Concept Setup:** Define the overarching theme (e.g., "Cultural Bias") and operational constraints (countries, languages, modality).
+    2. **Taxonomy Generation:** The system leverages a fine-tuned taxonomy generator (TaG) to intelligently extrapolate a structured vocabulary (L1, L2, L3). This grounds abstract concepts in concrete, granular scenarios.
+    3. **Data Synthesis:** We generate synthetic examples, anchoring them in intersections of sensitive attributes and complex societal contexts.
+    4. **Evaluation:** You define a rubric targeting nuanced harms. We evaluate the model's performance on the synthetic dataset, specifically assessing safety, accuracy, and bias alignment.
+    5. **Analysis Dashboard:** Root cause analysis made visual. Trace where model performance degrades across taxonomic and demographic intersections to facilitate targeted interventions.
+    """
+    )
+
+    # Core Contributions
+    st.markdown(
+        """
+    <div style="background-color: #fdf2f8; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #fbcfe8; margin-bottom: 1rem;">
+        <h3 style="margin-top: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">🎯 Core Contributions</h3>
+        <ul style="color: #4b5563; line-height: 1.6; padding-left: 1.5rem; margin-bottom: 0;">
+            <li><strong>Sociotechnical Framework:</strong> Leverages an expert-curated TaG (Taxonomy Generator) to ground synthetic data in real-world harms.</li>
+            <li><strong>Empowered Scaling:</strong> Specifically designed to enable resource-constrained entities (researchers, civil society) to scale high-stakes model evaluation.</li>
+            <li><strong>Empirical Efficacy:</strong> Demonstrates that granular taxonomic depth significantly outperforms standard datasets, eliciting higher failure rates across mainstream AI models.</li>
+            <li><strong>Interpretable Diagnostics:</strong> Allows evaluators to trace exact failure intersections for mitigation.</li>
+        </ul>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### 🛡️ Evaluation & Rubrics")
+    st.markdown(
+        "When entering the 'Evaluate' stage, precision is key. A rubric like *'Is this answer helpful?'* is too vague. Instead, aim for objective flags: *'Does the response enforce harmful stereotypes about the specific demographic group mentioned?'*"
+    )
+
+    # UX Researcher Tips
+    st.markdown(
+        """
+    <div style="background-color: #fffbeb; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #fef08a; margin-bottom: 1rem;">
+        <h3 style="margin-top: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">💡 UX Researcher Tips</h3>
+        <ul style="color: #4b5563; line-height: 1.6; padding-left: 1.5rem; margin-bottom: 0;">
+            <li><strong>Iterate on the Taxonomy:</strong> Refine the generated tree. Delete branches outside your scope to keep generation costs and visual noise low.</li>
+            <li><strong>Analyze the Misses:</strong> The Analysis dashboard explicitly colors failed evaluations. Look for clusters—are failures grouped by language or specific intersections?</li>
+            <li><strong>Change Context Frequently:</strong> To discover broad system vulnerabilities, run small batches, modify the context, and run again.</li>
+        </ul>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("Next: Concept Setup", type="primary"):
+        st.session_state.highest_step = max(st.session_state.highest_step, 1)
+        st.session_state.step = "Concept"
+        st.rerun()
+elif st.session_state.step == "Concept":
     st.markdown("""
 <div class="content-card" style="
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -633,7 +705,7 @@ if st.session_state.step == "Concept":
                     st.error(f"Data file '{csv_file}' not found.")
                     st.stop()
                 
-                st.session_state.highest_step = max(st.session_state.highest_step, 1)
+                st.session_state.highest_step = max(st.session_state.highest_step, 2)
                 st.session_state.step = "Taxonomy"
                 st.rerun()
 
@@ -852,7 +924,7 @@ elif st.session_state.step == "Taxonomy":
     if st.button("Next: Generate Data", type="primary"):
         with st.spinner("Synthesizing Synthetic Data Data Points (Simulated)..."):
             time.sleep(1)
-            st.session_state.highest_step = max(st.session_state.highest_step, 2)
+            st.session_state.highest_step = max(st.session_state.highest_step, 3)
             st.session_state.step = "Data"
             st.rerun()
 
@@ -1145,7 +1217,7 @@ elif st.session_state.step == "Data":
         st.warning("No data loaded. Ensure 'NodeSynth_Data_med_Full_Export.csv' is present.")
 
     if st.button("Next: Setup Evaluation", type="primary"):
-        st.session_state.highest_step = max(st.session_state.highest_step, 3)
+        st.session_state.highest_step = max(st.session_state.highest_step, 4)
         st.session_state.step = "Evaluate"
         st.rerun()
 
@@ -1278,7 +1350,7 @@ elif st.session_state.step == "Evaluate":
         st.warning("Could not load evaluation_data.csv")
 
     if st.button("Next: Define Autorator", type="primary"):
-        st.session_state.highest_step = max(st.session_state.highest_step, 4)
+        st.session_state.highest_step = max(st.session_state.highest_step, 5)
         st.session_state.step = "Autorater"
         st.rerun()
 
@@ -1410,7 +1482,7 @@ Classification:"""
             st.info("Click 'Rate' on the left to load the feedback data.")
 
     if st.button("Next: Analyze ratings", type="primary"):
-        st.session_state.highest_step = max(st.session_state.highest_step, 5)
+        st.session_state.highest_step = max(st.session_state.highest_step, 6)
         st.session_state.step = "Analyze"
         st.rerun()
 
@@ -1442,7 +1514,7 @@ elif st.session_state.step == "Analyze":
 
     # Heading 1
     st.subheader("Disclosure Rate by Taxonomy")
-    t1, t2 = st.tabs(["Rating and Level 1", "Rating x Level 2"])
+    tab_l1, tab_l2, tab_sunburst, tab_ngram = st.tabs(["Rating and Level 1", "Rating x Level 2", "Hierarchical View", "Text Analysis"])
 
     def u_shaped_sort_by_length(items_list):
         # Convert to string and remove empty
@@ -1463,7 +1535,7 @@ elif st.session_state.step == "Analyze":
 
         return start_half + end_half
 
-    with t1:
+    with tab_l1:
         if not df_med_plot_cleaned.empty:
             import plotly.graph_objects as go
 
@@ -1560,7 +1632,7 @@ elif st.session_state.step == "Analyze":
         else:
             st.warning("analyse.csv data not found.")
 
-    with t2:
+    with tab_l2:
         if not df_med_plot_cleaned.empty:
             import plotly.graph_objects as go
 
@@ -1654,6 +1726,62 @@ elif st.session_state.step == "Analyze":
 
             html_l2 = fig.to_html(full_html=True, include_plotlyjs='cdn')
             components.html(html_l2, height=chart_height + 50, scrolling=True)
+        else:
+            st.warning("analyse.csv data not found.")
+
+    with tab_sunburst:
+        if not df_med_plot_cleaned.empty:
+            import plotly.express as px
+
+            st.subheader("Hierarchical View of Safety Status")
+            fig_sunburst = px.sunburst(
+                df_med_plot_cleaned,
+                path=["Model", "level1", "Binary Safety Status"],
+                title="Safety Status Distribution by Model and Category",
+                color="Binary Safety Status",
+                color_discrete_map={
+                    "No Disclosure": "#EF553B",
+                    "Disclosure": "#636EFA",
+                },
+            )
+            st.plotly_chart(fig_sunburst, use_container_width=True)
+        else:
+            st.warning("analyse.csv data not found.")
+
+    with tab_ngram:
+        if not df_med_plot_cleaned.empty:
+            import plotly.express as px
+            import re
+
+            st.subheader("Top Bi-grams in 'No Disclosure' Queries")
+
+            def get_top_ngrams(df, text_column, n=2, top_k=15):
+                df_filtered = df[df["Binary Safety Status"] == "No Disclosure"]
+                words = []
+                for text in df_filtered[text_column].dropna():
+                    clean_text = re.sub(r"[^\w\s]", "", str(text).lower())
+                    words.extend(clean_text.split())
+                ngrams = [
+                    " ".join(words[i : i + n]) for i in range(len(words) - n + 1)
+                ]
+                counts = Counter(ngrams)
+                return pd.DataFrame(
+                    counts.most_common(top_k), columns=["N-Gram", "Count"]
+                )
+
+            ngram_df = get_top_ngrams(df_med_plot_cleaned, "prompts", n=2, top_k=15)
+
+            fig_ngram = px.bar(
+                ngram_df,
+                x="Count",
+                y="N-Gram",
+                orientation="h",
+                title="Most Common 2-Word Phrases in Failed Queries",
+                color="Count",
+                color_continuous_scale="Reds",
+            )
+            fig_ngram.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig_ngram, use_container_width=True)
         else:
             st.warning("analyse.csv data not found.")
 
