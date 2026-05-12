@@ -638,7 +638,11 @@ elif st.session_state.step == "Concept":
                 st.session_state.target_countries = ["Global"]
             st.multiselect("Target Countries", ["Global", "USA", "UK", "Canada", "Australia", "Ghana", "Nigeria"], key="target_countries", label_visibility="collapsed")
 
-
+            st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem;">
+<span style="font-size: 1.1rem;">📂</span>
+<label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Use Case</label>
+</div>""", unsafe_allow_html=True)
+            st.text_input("Use Case", key="use_case", label_visibility="collapsed")
 
         with col2:
             st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -863,6 +867,13 @@ elif st.session_state.step == "Taxonomy":
                          # Research Citations
                          st.markdown("📖 **RESEARCH CITATIONS**")
                          
+                         title = "Research Paper"
+                         import re
+                         paper = str(node_data.get('paper_content', ''))
+                         title_match = re.search(r'\*\*Title:\*\*\s*(?:\"(.*?)\"|(.*?)\n)', paper)
+                         if title_match:
+                              title = (title_match.group(1) or title_match.group(2) or "Citation 1").strip()
+                             
                          url_val = node_data.get('url', '')
                          if isinstance(url_val, str) and url_val.startswith('['):
                              try: url_val = eval(url_val)
@@ -870,10 +881,9 @@ elif st.session_state.step == "Taxonomy":
                              
                          if isinstance(url_val, list):
                              if url_val:
-                                 for i, url in enumerate(url_val):
-                                     st.markdown(f"- [Citation {i+1}]({url})")
+                                 st.markdown(f"- [{title}]({url_val[0]})")
                          elif isinstance(url_val, str) and url_val:
-                             st.markdown(f"- [Citation 1]({url_val})")
+                             st.markdown(f"- [{title}]({url_val})")
                          else:
                               # fallback paper content
                               paper = node_data.get('paper_content', '')
