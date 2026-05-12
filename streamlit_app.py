@@ -1259,7 +1259,7 @@ elif st.session_state.step == "Evaluation":
 
         # Auto-filter
         filtered_df = eval_df.copy()
-        filtered_df = filtered_df[filtered_df['dataset_source'] == 'sarai']
+        filtered_df = filtered_df[filtered_df['dataset_source'] == 'nodesynth']
         if selected_model != 'All':
             filtered_df = filtered_df[filtered_df['target_model'] == selected_model]
 
