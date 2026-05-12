@@ -419,7 +419,7 @@ def create_sankey_visualization(df_final):
     main_filter_columns = {
         'user_group': {'x': 0.05, 'label_plural': 'User Groups'},
         'level1': {'x': 0.20, 'label_plural': 'Level 1s'},
-        'user_case': {'x': 0.35, 'label_plural': 'User Cases'},
+        'user_case': {'x': 0.35, 'label_plural': 'Use Cases'},
         'model_modality': {'x': 0.50, 'label_plural': 'Model Modalities'},
         'cleaned_Country': {'x': 0.65, 'label_plural': 'Countries'}
     }
@@ -509,7 +509,7 @@ def set_step(new_step):
 with st.sidebar:
     st.markdown("### Navigation")
     
-    steps = ["Read Me", "Concept", "Taxonomy", "Data", "Evaluate", "Autorater", "Analyze"]
+    steps = ["Read Me", "Concept", "Taxonomy", "Data", "Evaluation", "Autorater", "Analysis"]
     icons = ["📖", "💡", "🕸️", "🗄️", "✅", "📝", "📊"]
     
     for i, step in enumerate(steps):
@@ -533,15 +533,14 @@ if st.session_state.step == "Read Me":
         "Welcome to the NodeSynth prototype. NodeSynth is a systematic, social-science-informed, and evidence-grounded methodology for generating socially relevant synthetic queries for AI model evaluation. It enables a holistic assessment of model behavior across sensitive domains and complex policies."
     )
 
-    st.markdown("---")
+
 
     # The Challenge
     st.markdown(
         """
     <div style="background-color: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; margin-bottom: 1rem;">
         <h3 style="margin-top: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">📄 The Challenge</h3>
-        <p style="color: #4b5563; line-height: 1.6; margin-bottom: 0.75rem;">Standard benchmarks and manual query creation struggle to capture real-world sociotechnical nuance or scale effectively. While generic synthetic data offers an alternative, these datasets often contain unintended biases, lack diversity, and are inaccurate for highly-sensitive domains.</p>
-        <p style="color: #4b5563; line-height: 1.6; margin-bottom: 0;"><strong>NodeSynth</strong> addresses this by breaking down complex safety policies (e.g., harassment) and sensitive domains (e.g., education) into granular taxonomies. This granularity exposes blind spots in independent guard models and can elicit failure rates up to 20 times higher than human-authored data.</p>
+        <p style="color: #4b5563; line-height: 1.6; margin-bottom: 0;">Standard benchmarks and manual query creation struggle to capture real-world sociotechnical nuance or scale effectively. While generic synthetic data offers an alternative, these datasets often contain unintended biases, lack diversity, and are inaccurate for highly-sensitive domains.</p>
     </div>
     """,
         unsafe_allow_html=True,
@@ -574,25 +573,7 @@ if st.session_state.step == "Read Me":
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 🛡️ Evaluation & Rubrics")
-    st.markdown(
-        "When entering the 'Evaluate' stage, precision is key. A rubric like *'Is this answer helpful?'* is too vague. Instead, aim for objective flags: *'Does the response enforce harmful stereotypes about the specific demographic group mentioned?'*"
-    )
 
-    # UX Researcher Tips
-    st.markdown(
-        """
-    <div style="background-color: #fffbeb; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #fef08a; margin-bottom: 1rem;">
-        <h3 style="margin-top: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">💡 UX Researcher Tips</h3>
-        <ul style="color: #4b5563; line-height: 1.6; padding-left: 1.5rem; margin-bottom: 0;">
-            <li><strong>Iterate on the Taxonomy:</strong> Refine the generated tree. Delete branches outside your scope to keep generation costs and visual noise low.</li>
-            <li><strong>Analyze the Misses:</strong> The Analysis dashboard explicitly colors failed evaluations. Look for clusters—are failures grouped by language or specific intersections?</li>
-            <li><strong>Change Context Frequently:</strong> To discover broad system vulnerabilities, run small batches, modify the context, and run again.</li>
-        </ul>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
 
     if st.button("Next: Concept Setup", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 1)
@@ -645,15 +626,9 @@ elif st.session_state.step == "Concept":
             if 'use_case' not in st.session_state:
                 st.session_state.use_case = "Advice seeking"
             if 'modality' not in st.session_state:
-                st.session_state.modality = "text-to-text"
+                st.session_state.modality = ["text-to-text", "text-to-video"]
 
-            selected_concept = st.selectbox(
-                "Target Concept", 
-                ["Medical Advice", "Cultural Representation"], 
-                key="target_concept",
-                on_change=update_concept_settings,
-                label_visibility="collapsed"
-            )
+            st.session_state.target_concept = "Medical Advice"
             
             st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem;">
 <span style="font-size: 1.1rem;">🌍</span>
@@ -663,11 +638,7 @@ elif st.session_state.step == "Concept":
                 st.session_state.target_countries = ["Global"]
             st.multiselect("Target Countries", ["Global", "USA", "UK", "Canada", "Australia", "Ghana", "Nigeria"], key="target_countries", label_visibility="collapsed")
 
-            st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem;">
-<span style="font-size: 1.1rem;">📂</span>
-<label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Use Case</label>
-</div>""", unsafe_allow_html=True)
-            st.text_input("Use Case", key="use_case", label_visibility="collapsed")
+
 
         with col2:
             st.markdown("""<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -680,7 +651,7 @@ elif st.session_state.step == "Concept":
 <span style="font-size: 1.1rem;">🔄</span>
 <label style="font-weight: 700; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Modality</label>
 </div>""", unsafe_allow_html=True)
-            st.selectbox("Modality", ["text-to-text", "text-to-image", "text-to-video"], key="modality", label_visibility="collapsed")
+            st.multiselect("Modality", ["text-to-text", "text-to-image", "text-to-video"], default=["text-to-text", "text-to-video"], key="modality", label_visibility="collapsed")
             
         st.write("")
         if st.button("Generate Taxonomy", type="primary"):
@@ -735,7 +706,7 @@ elif st.session_state.step == "Taxonomy":
 """, unsafe_allow_html=True)
     
     
-    tab_graph, tab_structure = st.tabs(["Knowledge Graph", "Taxonomy Structure"])
+    tab_graph, tab_structure = st.tabs(["Taxonomy Flow", "Taxonomy Structure"])
     
     with tab_graph:
         if not st.session_state.demo_data.empty:
@@ -892,13 +863,6 @@ elif st.session_state.step == "Taxonomy":
                          # Research Citations
                          st.markdown("📖 **RESEARCH CITATIONS**")
                          
-                         title = "Research Paper"
-                         import re
-                         paper = str(node_data.get('paper_content', ''))
-                         title_match = re.search(r'\*\*Title:\*\*\s*(?:\"(.*?)\"|(.*?)\n)', paper)
-                         if title_match:
-                             title = (title_match.group(1) or title_match.group(2) or "Research Paper").strip()
-                             
                          url_val = node_data.get('url', '')
                          if isinstance(url_val, str) and url_val.startswith('['):
                              try: url_val = eval(url_val)
@@ -906,9 +870,10 @@ elif st.session_state.step == "Taxonomy":
                              
                          if isinstance(url_val, list):
                              if url_val:
-                                 st.markdown(f"- [{title}]({url_val[0]})")
+                                 for i, url in enumerate(url_val):
+                                     st.markdown(f"- [Citation {i+1}]({url})")
                          elif isinstance(url_val, str) and url_val:
-                             st.markdown(f"- [{title}]({url_val})")
+                             st.markdown(f"- [Citation 1]({url_val})")
                          else:
                               # fallback paper content
                               paper = node_data.get('paper_content', '')
@@ -1158,7 +1123,7 @@ elif st.session_state.step == "Data":
         st.markdown("""
 <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: rgba(248,250,252,0.3); display: flex; align-items: center; gap: 0.75rem;">
 <span style="color: #6366f1; font-size: 18px;">📋</span>
-<h4 style="margin: 0; font-size: 12px; font-weight: 900; color: #334155; text-transform: uppercase; letter-spacing: 0.1em;">Ground Truth Inspector</h4>
+<h4 style="margin: 0; font-size: 12px; font-weight: 900; color: #334155; text-transform: uppercase; letter-spacing: 0.1em;">Data Inspector</h4>
 </div>
 """, unsafe_allow_html=True)
         gt_df = df_work[['level2', 'level3', 'prompts', 'complexity', 'extracted_Country', 'Domain']].copy()
@@ -1195,9 +1160,9 @@ elif st.session_state.step == "Data":
         with col_btn:
             csv_data = display_df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📥 Download Ground Truth Data (CSV)",
+                label="📥 Download Annotated Synthetic Data",
                 data=csv_data,
-                file_name='ground_truth_inspector.csv',
+                file_name='annotated_synthetic_data.csv',
                 mime='text/csv',
                 use_container_width=True
             )
@@ -1218,10 +1183,10 @@ elif st.session_state.step == "Data":
 
     if st.button("Next: Setup Evaluation", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 4)
-        st.session_state.step = "Evaluate"
+        st.session_state.step = "Evaluation"
         st.rerun()
 
-elif st.session_state.step == "Evaluate":
+elif st.session_state.step == "Evaluation":
     if 'eval_generated' not in st.session_state:
         st.session_state.eval_generated = False
 
@@ -1234,7 +1199,7 @@ elif st.session_state.step == "Evaluate":
     box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
 ">
 <h2 style="margin-top:0; color: white; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Evaluate Your Target Model</h2>
-<p style="color: #cbd5e1; font-size: 1.1rem; max-width: 600px; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Generate responses from the model you want to evaluate</p>
+<p style="color: #cbd5e1; font-size: 1.1rem; max-width: 600px; margin-bottom: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Generate responses from the model you want to evaluate.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1483,10 +1448,10 @@ Classification:"""
 
     if st.button("Next: Analyze ratings", type="primary"):
         st.session_state.highest_step = max(st.session_state.highest_step, 6)
-        st.session_state.step = "Analyze"
+        st.session_state.step = "Analysis"
         st.rerun()
 
-elif st.session_state.step == "Analyze":
+elif st.session_state.step == "Analysis":
     st.markdown("""
 <div class="content-card" style="
     background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
