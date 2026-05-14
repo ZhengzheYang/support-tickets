@@ -1909,14 +1909,18 @@ elif st.session_state.step == "Analysis":
                 top = get_model_ngrams(df_med_plot_cleaned, m, top_k=10)
                 model_ngram_data[m] = dict(top)
 
-            # ── Part 1: Faceted bar chart — top bi-grams per model ──
+            # ── Part 1: Faceted bar chart — top bi-grams per model (2×2 grid) ──
             from plotly.subplots import make_subplots
+            import math
             n_models = len(models)
+            n_cols = 2
+            n_rows = math.ceil(n_models / n_cols)
             fig_facet = make_subplots(
-                rows=1, cols=n_models,
+                rows=n_rows, cols=n_cols,
                 subplot_titles=models,
                 shared_yaxes=False,
-                horizontal_spacing=0.08,
+                horizontal_spacing=0.12,
+                vertical_spacing=0.12,
             )
 
             default_color = {"line": "#6366f1", "fill": "rgba(99,102,241,0.08)"}
@@ -1927,6 +1931,8 @@ elif st.session_state.step == "Analysis":
                 phrases = [p for p, _ in ngrams_list][::-1]
                 counts = [c for _, c in ngrams_list][::-1]
                 bar_color = MODEL_COLORS.get(m, default_color)["line"]
+                row = i // n_cols + 1
+                col = i % n_cols + 1
 
                 fig_facet.add_trace(go.Bar(
                     y=phrases, x=counts,
@@ -1934,10 +1940,10 @@ elif st.session_state.step == "Analysis":
                     marker=dict(color=bar_color, cornerradius=4),
                     text=counts,
                     textposition="outside",
-                    textfont=dict(size=11, family="'Inter', sans-serif", color="#334155"),
+                    textfont=dict(size=12, family="'Inter', sans-serif", color="#334155"),
                     hovertemplate="<b>%{y}</b><br>Count: %{x}<extra>" + m + "</extra>",
                     showlegend=False,
-                ), row=1, col=i + 1)
+                ), row=row, col=col)
 
             fig_facet.update_layout(
                 font=FONT_STYLE,
@@ -1947,17 +1953,19 @@ elif st.session_state.step == "Analysis":
                 ),
                 paper_bgcolor="white",
                 plot_bgcolor="white",
-                height=480,
-                margin=dict(t=80, b=30, l=20, r=30),
+                height=420 * n_rows,
+                margin=dict(t=80, b=30, l=20, r=40),
             )
-            for i in range(1, n_models + 1):
-                fig_facet.update_xaxes(gridcolor="#f1f5f9", showticklabels=False, row=1, col=i)
+            for i in range(n_models):
+                row = i // n_cols + 1
+                col = i % n_cols + 1
+                fig_facet.update_xaxes(gridcolor="#f1f5f9", showticklabels=False, row=row, col=col)
                 fig_facet.update_yaxes(
-                    tickfont=dict(size=11, family="'Inter', sans-serif", color="#334155"),
-                    row=1, col=i,
+                    tickfont=dict(size=12, family="'Inter', sans-serif", color="#334155"),
+                    row=row, col=col,
                 )
             for ann in fig_facet["layout"]["annotations"]:
-                ann["font"] = dict(size=13, family="'Inter', sans-serif", color="#334155")
+                ann["font"] = dict(size=14, family="'Inter', sans-serif", color="#1e293b")
 
             st.plotly_chart(fig_facet, use_container_width=True)
 
